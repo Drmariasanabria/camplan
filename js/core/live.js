@@ -15,6 +15,8 @@ function writeCache(k, hit) {
   }
 }
 export const lastUpdated = key => readCache('live:' + key)?.t || null;
+/* Último valor guardado de una fuente (aunque esté caducado), para no esperar */
+export const lastValue = key => readCache('live:' + key)?.v ?? null;
 async function cached(key, ttlMin, fn) {
   const k = 'live:' + key, hit = readCache(k);
   if (hit && Date.now() - hit.t < ttlMin * 60000) return hit.v;

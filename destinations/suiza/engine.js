@@ -101,17 +101,23 @@ export async function prepare(ctx) {
       try { const r = await live.route([a, b]); LEGS[key(a, b)] = { km: r.km, h: r.h, coords: r.geo.coordinates }; } catch {}
     }));
   })();
-  const fx = live.eurChf().then(f => LIVE.fx = f.rate).catch(() => {});
+  // Cambio y combustible no bloquean: se usan los últimos conocidos y se actualizan en segundo plano
+  const last = live.lastValue?.('fx'); if (last?.rate) LIVE.fx = last.rate;
+  const lf = { es: live.lastValue?.(`fes:20:${cfg.van.fuel}`)?.[0]?.price, fr: live.lastValue?.(`ffr:46.144,6.081,25,${cfg.van.fuel}`)?.[0]?.price };
+  if (!LIVE.fuel[cfg.van.fuel] && (lf.es || lf.fr)) LIVE.fuel[cfg.van.fuel] = lf;
+  live.eurChf().then(f => LIVE.fx = f.rate).catch(() => {});
   const fuel = loadFuel(live, cfg.van.fuel);
-  await Promise.race([Promise.all([work, fx, fuel]), new Promise(r => setTimeout(r, 9000))]);
+  // Solo se espera a las distancias de ruta que no estén ya guardadas (máx. 8 s)
+  await Promise.race([Promise.all([work, LIVE.fuel[cfg.van.fuel] ? null : fuel]), new Promise(r => setTimeout(r, 8000))]);
 }
 async function loadFuel(live, type) {
-  if (LIVE.fuel[type]) return;
+  if (LIVE.fuel[type]?.fresh) return;
   const [es, fr] = await Promise.all([
     live.fuelES('20', type).then(l => l[0]?.price).catch(() => null),
     live.fuelFR(46.144, 6.081, 25, type).then(l => l[0]?.price).catch(() => null),
   ]);
-  LIVE.fuel[type] = { es, fr };
+  const prev = LIVE.fuel[type] || {};
+  LIVE.fuel[type] = { es: es ?? prev.es, fr: fr ?? prev.fr, fresh: true };
 }
 export const liveData = () => LIVE;
 
