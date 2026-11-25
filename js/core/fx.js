@@ -2,10 +2,11 @@
 
 /* ---------------- Partículas ---------------- */
 export function startParticles() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const c = document.getElementById('particles');
   const ctx = c.getContext('2d');
   let W, H, flakes = [], mouse = { x: -999, y: -999 };
-  const N = Math.min(160, Math.floor(innerWidth / 9));
+  const N = Math.min(innerWidth < 700 ? 45 : 160, Math.floor(innerWidth / 9));
   const resize = () => { W = c.width = innerWidth * devicePixelRatio; H = c.height = innerHeight * devicePixelRatio; c.style.width = innerWidth + 'px'; c.style.height = innerHeight + 'px'; };
   resize(); addEventListener('resize', resize);
   for (let i = 0; i < N; i++) flakes.push(mk(true));
@@ -61,7 +62,7 @@ export function initSound() {
   paint();
   btn.addEventListener('click', () => { soundOn = !soundOn; localStorage.setItem('sfx', soundOn ? 'on' : 'off'); paint(); sfx.click(); });
   let last = 0;
-  document.addEventListener('pointerover', e => {
+  if (matchMedia('(hover: hover)').matches) document.addEventListener('pointerover', e => {
     const el = e.target.closest('a,button,.check,.card');
     if (!el || el === document.lastHover) return; document.lastHover = el;
     const now = performance.now(); if (now - last > 60) { sfx.hover(); last = now; }

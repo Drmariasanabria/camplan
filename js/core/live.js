@@ -1,13 +1,33 @@
-// Datos en vivo de APIs públicas con CORS. Todas con caché en sessionStorage.
+// Datos en vivo de APIs públicas con CORS.
+// Caché persistente: si no hay conexión o la fuente falla, se usan los últimos datos buscados.
 
-async function cached(key, ttlMin, fn) {
-  const k = 'live:' + key, hit = JSON.parse(sessionStorage.getItem(k) || 'null');
-  if (hit && Date.now() - hit.t < ttlMin * 60000) return hit.v;
-  const v = await fn();
-  try { sessionStorage.setItem(k, JSON.stringify({ t: Date.now(), v })); } catch {}
-  return v;
+const mem = new Map(), inflight = new Map();
+function readCache(k) {
+  if (mem.has(k)) return mem.get(k);
+  try { const v = JSON.parse(localStorage.getItem(k) || sessionStorage.getItem(k) || 'null'); if (v) mem.set(k, v); return v; } catch { return null; }
 }
-const j = async (url, opts) => { const r = await fetch(url, opts); if (!r.ok) throw new Error(r.status + ' ' + url); return r.json(); };
+function writeCache(k, hit) {
+  mem.set(k, hit);
+  const s = JSON.stringify(hit);
+  try { (s.length < 400000 ? localStorage : sessionStorage).setItem(k, s); }
+  catch { // sin espacio: borra lo más antiguo y reintenta una vez
+    try { Object.keys(localStorage).filter(x => x.startsWith('live:')).slice(0, 40).forEach(x => localStorage.removeItem(x)); localStorage.setItem(k, s); } catch {}
+  }
+}
+export const lastUpdated = key => readCache('live:' + key)?.t || null;
+async function cached(key, ttlMin, fn) {
+  const k = 'live:' + key, hit = readCache(k);
+  if (hit && Date.now() - hit.t < ttlMin * 60000) return hit.v;
+  if (inflight.has(k)) return inflight.get(k);
+  const p = (async () => {
+    try { const v = await fn(); writeCache(k, { t: Date.now(), v }); return v; }
+    catch (e) { if (hit) { hit.stale = true; return hit.v; } throw e; }
+    finally { inflight.delete(k); }
+  })();
+  inflight.set(k, p);
+  return p;
+}
+const j = async (url, opts = {}) => { const r = await fetch(url, { signal: AbortSignal.timeout(20000), ...opts }); if (!r.ok) throw new Error(r.status + ' ' + url); return r.json(); };
 
 /* Cambio EUR→CHF (BCE vía Frankfurter) */
 export const eurChf = () => cached('fx', 240, async () => {

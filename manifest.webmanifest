@@ -1,0 +1,21 @@
+{
+  "name": "Roadbook · Viajes en camper",
+  "short_name": "Roadbook",
+  "description": "Planificador de viajes en camper con datos en vivo: ruta, paradas, tiempo, presupuesto y equipaje.",
+  "start_url": "./#/suiza/viaje",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#070b14",
+  "theme_color": "#070b14",
+  "lang": "es",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Plan día a día", "url": "./#/suiza/itinerario" },
+    { "name": "Tiempo y aludes", "url": "./#/suiza/tiempo" },
+    { "name": "Emergencias", "url": "./#/suiza/emergencias" }
+  ]
+}

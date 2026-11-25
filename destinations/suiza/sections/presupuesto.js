@@ -14,7 +14,7 @@ export default {
       const q = alt(ctx, { outStrategy: o, retStrategy: r, stopsOut: {}, stopsRet: {} });
       return { l, q, cur: o === c.outStrategy && r === c.retStrategy };
     });
-    const bases = BASES.filter(x => c.dogs <= x.maxDogs).map(x => ({ x, q: alt(ctx, { base: x.id, nightPriceOverride: x.id === c.base ? c.nightPriceOverride : 0 }) }));
+    const bases = BASES.filter(x => c.dogs <= x.maxDogs).map(x => ({ x, q: alt(ctx, { stays: [{ base: x.id, nights: 0, price: p.stays.find(st => st.base.id === x.id)?.price || 0 }] }) }));
     return `<p class="kicker">Presupuesto vivo</p><h1 class="title">Cuánto cuesta <span class="grad-text">de verdad</span></h1>
     <p class="lead">Calculado con vuestras fechas, kilómetros reales, el combustible de hoy, el cambio del día (1 € = ${p.fx.toFixed(3)} CHF) y lo que hayáis elegido. Cambia cualquier cifra aquí o en <a href="#/suiza/viaje">Mi viaje</a>.</p>
     <div class="grid g2">
@@ -35,7 +35,7 @@ export default {
       ${ui.num('skiDays', 'Días de esquí', c.skiDays, { min: 0, max: 12 })}
       ${ui.num('winterPassDays', 'Días de pase invernal', c.winterPassDays, { min: 0, max: 30 })}
       ${ui.num('sitterHours', 'Horas de cuidador', c.sitterHours, { min: 0, max: 80 })}
-      ${ui.num('nightPriceOverride', 'Precio real camping (CHF/noche, 0 = estimado)', c.nightPriceOverride, { min: 0, max: 400 })}
+      
       ${ui.num('contingencyPct', 'Imprevistos (%)', c.contingencyPct, { min: 0, max: 40 })}
     </div></fieldset>
 
@@ -43,8 +43,8 @@ export default {
     ${ui.table(['Opción', 'Días en Suiza', 'Km', 'Peajes', 'Total', 'Diferencia'], scen.map(s => [`<b>${s.l}</b>${s.cur ? ' <span class="badge ok">Actual</span>' : ''}`, s.q.nights, Math.round(s.q.budget.km).toLocaleString('es-ES'), ui.eur(s.q.budget.items.find(i => i.k === 'tolls').v), `<b>${ui.eur(s.q.budget.total)}</b>`, s.cur ? '—' : `<span style="color:${s.q.budget.total < b.total ? 'var(--ok)' : 'var(--warn)'}">${s.q.budget.total < b.total ? '' : '+'}${ui.eur(s.q.budget.total - b.total)}</span>`]), { num: [1, 2, 3, 4, 5] })}
     <p class="small muted">La mixta tarda más: con las mismas fechas puede quedar una noche menos en Suiza, y eso también cambia el total.</p>
 
-    <h2>Comparar <span class="grad-text">campings</span></h2>
-    ${ui.table(['Camping', 'Noches', 'Total viaje', 'Diferencia'], bases.map(({ x, q }) => [`<b>${x.name}</b>${x.id === c.base ? ' <span class="badge ok">Actual</span>' : ''}${q.warn.some(w => w.lvl === 'bad') ? ' <span class="badge bad">no encaja</span>' : ''}`, q.nights, `<b>${ui.eur(q.budget.total)}</b>`, x.id === c.base ? '—' : `<span style="color:${q.budget.total < b.total ? 'var(--ok)' : 'var(--warn)'}">${q.budget.total < b.total ? '' : '+'}${ui.eur(q.budget.total - b.total)}</span>`]), { num: [1, 2, 3] })}
+    <h2>Si estuvierais todo el tiempo <span class="grad-text">en un solo camping</span></h2>
+    ${ui.table(['Camping', 'Noches', 'Total viaje', 'Diferencia con tu plan'], bases.map(({ x, q }) => [`<b>${x.name}</b>${q.warn.some(w => w.lvl === 'bad') ? ' <span class="badge bad">no encaja</span>' : ''}`, q.nights, `<b>${ui.eur(q.budget.total)}</b>`, `<span style="color:${q.budget.total < b.total ? 'var(--ok)' : 'var(--warn)'}">${q.budget.total < b.total ? '' : '+'}${ui.eur(q.budget.total - b.total)}</span>`]), { num: [1, 2, 3] })}
 
     <h2>Dónde <span class="grad-text">se recorta de verdad</span></h2>
     <div class="grid g3">

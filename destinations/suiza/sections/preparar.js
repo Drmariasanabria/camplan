@@ -13,7 +13,7 @@ export default {
     return `<p class="kicker">Preparación</p><h1 class="title">Antes <span class="grad-text">de salir</span></h1>
     <p class="lead">Cada tarea tiene fecha límite calculada desde tu día de salida (${fmtDate(p.cfg.depart)}). Si cambias la fecha, los plazos se mueven solos. Pincha una tarea para marcarla.</p>
     <div class="card no-tilt"><span class="tag">Progreso</span><div class="big-num">${n} / ${p.prep.length}</div><div class="progress"><i style="width:${n / p.prep.length * 100}%"></i></div></div>
-    <div style="margin-top:20px">${p.prep.map(x => { const [cls, lab] = status(x); return `<div class="prep-row ${done[x.id] ? 'done' : ''}" data-prep="${x.id}">
+    <div style="margin-top:20px">${p.prep.map(x => { const [cls, lab] = status(x); return `<div class="prep-row ${done[x.id] ? 'done' : ''}" data-prep="${x.id}" tabindex="0" role="checkbox" aria-checked="${!!done[x.id]}">
       <span class="check ${done[x.id] ? 'done' : ''}" style="padding:0"><span class="box"></span></span>
       <span class="due">${fmtDate(x.due)} <span class="badge ${cls}">${lab}</span></span>
       <span class="t">${txt(x)}</span><span class="badge">${x.cat}</span></div>`; }).join('')}</div>

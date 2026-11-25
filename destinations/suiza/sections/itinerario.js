@@ -1,6 +1,7 @@
 import { IMG, ACTIVITIES, LIFTS } from '../data.js';
 import { D, fmtLong, hhmm, liftOpen, isHigh, addDays } from '../engine.js';
 import { warnList } from '../common.js';
+import { openRoadbook } from '../roadbook.js';
 
 const A = id => ACTIVITIES.find(a => a.id === id);
 const TYPE = { ski: '🎿 Esquí', hike: '🥾 Ruta', valley: '🏃 Valle', rest: '😌 Descanso', shop: '🛒 Logística', town: '🏊 Pueblo' };
@@ -29,7 +30,7 @@ function baseCard(ctx, d) {
     : `Esquiáis todos: los perros necesitan ${ui.term('petsitting24', 'cuidador')}. No los dejéis horas en la furgo.`) : '';
   const lifts = Object.entries(LIFTS).filter(([k]) => liftOpen(k, d.date)).map(([, l]) => l.name);
   return `<div class="day base" id="d-${d.date}"><div class="dd"><b>${D(d.date).getDate()}</b><span>${D(d.date).toLocaleDateString('es-ES', { weekday: 'long' })}</span></div>
-  <div><div class="badges"><span class="badge ok">${TYPE[a.type]}</span>${d.hol ? `<span class="badge ${d.hol.kind === 'closed' ? 'bad' : 'warn'}">${d.hol.name}: ${d.hol.note}</span>` : ''}${isHigh(d.date) ? '<span class="badge">Tarifa alta remontes</span>' : ''}${d.liftWarn ? `<span class="badge bad">⚠ ${d.liftWarn}</span>` : ''}${a.dogs ? '<span class="badge info">🐕 Con perros</span>' : '<span class="badge warn">Sin perros</span>'}${d.edited ? '<span class="badge">Editado por ti</span>' : ''}</div>
+  <div><div class="badges"><span class="badge info">📍 ${d.stay?.base.town || ''}</span>${d.transfer ? '<span class="badge warn">🚐 Día de traslado</span>' : ''}<span class="badge ok">${TYPE[a.type]}</span>${d.hol ? `<span class="badge ${d.hol.kind === 'closed' ? 'bad' : 'warn'}">${d.hol.name}: ${d.hol.note}</span>` : ''}${isHigh(d.date) ? '<span class="badge">Tarifa alta remontes</span>' : ''}${d.liftWarn ? `<span class="badge bad">⚠ ${d.liftWarn}</span>` : ''}${a.dogs ? '<span class="badge info">🐕 Con perros</span>' : '<span class="badge warn">Sin perros</span>'}${d.edited ? '<span class="badge">Editado por ti</span>' : ''}</div>
     <h3>${a.name}</h3>
     ${d.auto ? `<p><b>${d.auto}</b></p>` : ''}
     <p>${a.text}</p>
@@ -63,7 +64,7 @@ export default {
     <p class="lead">Generado con tus fechas, las aperturas de remontes, los festivos de Navidad y vuestros intereses. Cambia cualquier día: se guarda y el presupuesto se ajusta.</p>
     ${warnList(p)}
     <div class="callout"><h3>Rutina cada mañana antes de decidir</h3><p>1) Estado de pistas y senderos · 2) Tiempo, viento y ${ui.term('SLF', 'peligro de aludes')} · 3) Normas para perros en ese transporte · 4) Hora de puesta de sol (≈16:45) · 5) Cómo volvéis al camping.</p></div>
-    <div class="btn-row"><button class="btn" id="ics">📆 Añadir al calendario</button><button class="btn" id="print">🖨️ Imprimir</button><button class="btn" id="auto">↺ Volver al plan automático</button></div>
+    <div class="btn-row"><button class="btn" id="ics">📆 Añadir al calendario</button><button class="btn primary" id="print">📄 Roadbook en PDF</button><button class="btn" id="auto">↺ Volver al plan automático</button></div>
     ${p.days.map(d => d.travel ? travelCard(ctx, d) : d.kind === 'buffer'
       ? `<div class="day buffer"><div class="dd"><b>${D(d.date).getDate()}</b><span>${D(d.date).toLocaleDateString('es-ES', { weekday: 'long' })}</span></div><div><h3>Día colchón</h3><p>En casa. Margen por si una nevada o un corte retrasa la vuelta.</p></div></div>`
       : baseCard(ctx, d)).join('')}`;
@@ -73,7 +74,7 @@ export default {
       const dp = ctx.get('dayplan', {}); (dp[i.dataset.day] ||= {})[i.dataset.k] = i.value; ctx.set('dayplan', dp); ctx.rerender();
     }));
     el.querySelector('#auto').onclick = () => { ctx.set('dayplan', {}); ctx.rerender(); };
-    el.querySelector('#print').onclick = () => print();
+    el.querySelector('#print').onclick = () => openRoadbook(ctx.plan, ctx);
     el.querySelector('#ics').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([ics(ctx.plan)], { type: 'text/calendar' })); a.download = 'viaje-grindelwald.ics'; a.click(); };
   },
 };

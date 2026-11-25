@@ -25,7 +25,7 @@ export function checklist(id, items, ctx) {
   const done = items.filter(i => st[i.id]).length;
   return `<div class="checklist" data-chk="${id}">
     <div class="progress"><i style="width:${items.length ? done / items.length * 100 : 0}%"></i></div>
-    ${items.map(i => `<div class="check ${st[i.id] ? 'done' : ''}" data-id="${i.id}"><span class="box"></span><span class="txt">${i.t}${i.link ? ` <a href="${i.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()">abrir ↗</a>` : ''}</span></div>`).join('')}
+    ${items.map(i => `<div class="check ${st[i.id] ? 'done' : ''}" data-id="${i.id}" tabindex="0" role="checkbox" aria-checked="${!!st[i.id]}"><span class="box"></span><span class="txt">${i.t}${i.link ? ` <a href="${i.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()">abrir ↗</a>` : ''}</span></div>`).join('')}
   </div>`;
 }
 export function mountChecklists(el, ctx) {
@@ -35,7 +35,7 @@ export function mountChecklists(el, ctx) {
       const row = e.target.closest('.check'); if (!row) return;
       const st = ctx.get('chk:' + id, {}); st[row.dataset.id] = !st[row.dataset.id];
       ctx.set('chk:' + id, st);
-      row.classList.toggle('done', st[row.dataset.id]);
+      row.classList.toggle('done', st[row.dataset.id]); row.setAttribute('aria-checked', !!st[row.dataset.id]);
       st[row.dataset.id] ? sfx.check() : sfx.uncheck();
       const all = box.querySelectorAll('.check').length, n = box.querySelectorAll('.check.done').length;
       box.querySelector('.progress i').style.width = n / all * 100 + '%';
@@ -117,3 +117,8 @@ export const tog = (id, label, v) => `<label class="toggle"><input type="checkbo
 /* Lee/escribe rutas tipo "van.height" */
 export const getPath = (o, p) => p.split('.').reduce((a, k) => a?.[k], o);
 export function setPath(o, p, v) { const ks = p.split('.'); let t = o; ks.slice(0, -1).forEach(k => t = (t[k] ||= {})); t[ks.at(-1)] = v; return o; }
+
+/* Teclado: Enter/Espacio marcan casillas y filas de tareas */
+document.addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('.check[tabindex], .prep-row[tabindex]')) { e.preventDefault(); e.target.click(); }
+});

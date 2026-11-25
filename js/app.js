@@ -40,7 +40,11 @@ function ctxFor(destId) {
   };
 }
 
+let navToken = 0;
+const errorCard = (e, where) => `<div class="callout bad"><h3>Esta parte no se ha podido mostrar</h3><p>${ui.esc(where)}: ${ui.esc(e?.message || e)}. El resto de la web sigue funcionando.</p><button class="btn sm" onclick="location.reload()">↻ Recargar</button></div>`;
+
 async function route(quiet = false) {
+  const token = ++navToken;
   document.body.classList.remove('nav-open');
   const [, a, b] = location.hash.replace(/^#/, '').split('/');
   let html, mount, bgs;
@@ -49,6 +53,7 @@ async function route(quiet = false) {
     renderDestSwitch(null); renderSide(null);
     bgs = DESTINATIONS.filter(d => d.cover).map(d => d.cover);
     html = homeHTML();
+    document.title = 'Roadbook · Viajes en camper';
   } else if (a === 'ajustes') {
     renderDestSwitch(null); renderSide(null);
     html = settingsHTML(); mount = mountSettings;
@@ -61,17 +66,21 @@ async function route(quiet = false) {
     ctx.rerender = () => { const y = scrollY; route(true).then(() => scrollTo({ top: y, behavior: 'instant' })); };
     if (dest.prepare) {
       if (!quiet) view.innerHTML = `<div class="page"><p class="kicker">Calculando tu viaje</p><h1 class="title"><span class="loader" style="width:40px;height:40px;border-width:5px"></span></h1><p class="lead">Rutas reales, combustible de hoy y cambio de moneda…</p></div>`;
-      await dest.prepare(ctx);
+      try { await dest.prepare(ctx); } catch (e) { console.warn('prepare', e); }
+      if (token !== navToken) return; // el usuario ya navegó a otra sección
     }
-    ctx.plan = dest.plan ? dest.plan(ctx) : null;
-    html = `<div class="page" data-section="${sec.id}">${dest.bar ? dest.bar(ctx, sec) : ''}${sec.render(ctx)}${pager(dest, sec)}${footer(dest)}</div>`;
+    try { ctx.plan = dest.plan ? dest.plan(ctx) : null; } catch (e) { console.error(e); ctx.plan = null; }
+    let body;
+    try { body = (dest.bar && ctx.plan ? dest.bar(ctx, sec) : '') + sec.render(ctx); } catch (e) { console.error(e); body = `<h1 class="title">${sec.icon} ${sec.title}</h1>` + errorCard(e, sec.title); }
+    html = `<div class="page" data-section="${sec.id}">${body}${pager(dest, sec)}${footer(dest)}</div>`;
+    document.title = `${sec.title} · ${dest.meta.name} · Roadbook`;
     mount = el => sec.mount?.(el, ctx);
     bgs = sec.bg || dest.meta.backgrounds;
   }
   view.innerHTML = html.startsWith('<div class="page"') ? html : `<div class="page">${html}</div>`;
   if (quiet) view.querySelector('.page').style.animation = 'none';
   else { scrollTo({ top: 0, behavior: 'instant' }); setBackgrounds(bgs); sfx.page(); }
-  try { await mount?.(view); } catch (e) { console.error(e); }
+  try { await mount?.(view); } catch (e) { console.error(e); view.querySelector('.page')?.insertAdjacentHTML('beforeend', errorCard(e, 'Datos en vivo')); }
   enhance(view, quiet);
 }
 
@@ -105,7 +114,7 @@ function settingsHTML() {
       <h3>Sesión de Google</h3>
       <p>${u ? `Conectada como <b>${u.email}</b>. Checklists, equipaje, presupuesto y notas se sincronizan en Firestore.` :
         store.cloudReady() ? 'Inicia sesión para guardar tu progreso en la nube y verlo en el móvil.' :
-        'Ahora mismo todo se guarda en este navegador. Para sincronizar entre móvil y ordenador, crea un proyecto Firebase (gratis) y pega la config en <code>js/firebase-config.js</code>. Instrucciones en <code>README.md</code>.'}</p>
+        'Ahora mismo todo se guarda en este navegador.'}</p>
       <div class="btn-row">${u ? '<button class="btn" id="so">Cerrar sesión</button>' : `<button class="btn primary" id="si">Entrar con Google</button>`}</div></div>
     <div class="card no-tilt"><span class="tag">Copia de seguridad</span><h3>Exportar / importar</h3>
       <p>Descarga todo lo que has marcado como JSON, o restáuralo.</p>
@@ -121,5 +130,13 @@ function mountSettings(el) {
 
 document.getElementById('menu-toggle').addEventListener('click', () => document.body.classList.toggle('nav-open'));
 store.onChange(() => route(true));
-addEventListener('hashchange', route);
+addEventListener('hashchange', () => route());
+// Conexión
+const net = () => document.body.classList.toggle('offline', !navigator.onLine);
+addEventListener('online', () => { net(); toast('🟢 Conexión recuperada'); });
+addEventListener('offline', () => { net(); toast('📴 Sin conexión: verás los últimos datos guardados'); });
+net();
+// App instalable y offline
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('./sw.js').catch(() => {});
+
 startParticles(); initSound(); store.initAuth(); route();

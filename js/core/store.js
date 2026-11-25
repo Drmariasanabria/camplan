@@ -4,7 +4,7 @@ import { toast, sfx } from './fx.js';
 
 const LS = 'roadbook:v1';
 let data = JSON.parse(localStorage.getItem(LS) || '{}');
-let fb = null, user = null, saveTimer = null;
+let fb = null, user = null, saveTimer = null, syncState = 'idle';
 const listeners = new Set();
 
 export const cloudReady = () => !!firebaseConfig.apiKey;
@@ -16,8 +16,11 @@ export function get(dest, key, def) { return data[dest]?.[key] ?? def; }
 export function set(dest, key, val) {
   (data[dest] ||= {})[key] = val;
   data[dest]._updated = Date.now();
-  localStorage.setItem(LS, JSON.stringify(data));
-  if (user) { clearTimeout(saveTimer); saveTimer = setTimeout(() => pushCloud(dest), 800); }
+  const s = JSON.stringify(data);
+  // Tus datos tienen prioridad: si no cabe, se borra la caché de datos en vivo y se reintenta
+  try { localStorage.setItem(LS, s); }
+  catch { Object.keys(localStorage).filter(k => k.startsWith('live:')).forEach(k => localStorage.removeItem(k)); try { localStorage.setItem(LS, s); } catch (e) { console.error(e); } }
+  if (user) { setSync('pending'); clearTimeout(saveTimer); saveTimer = setTimeout(() => pushCloud(dest), 800); }
 }
 
 async function loadFirebase() {
@@ -29,11 +32,21 @@ async function loadFirebase() {
   return fb;
 }
 
+function setSync(s) {
+  syncState = s;
+  const el = document.querySelector('#auth-btn .sync'); if (!el) return;
+  el.textContent = { pending: '⟳ Guardando…', ok: '☁️ Guardado', error: '⚠ Sin sincronizar', idle: '' }[s] || '';
+  el.dataset.s = s;
+}
 async function pushCloud(dest) {
   if (!user) return;
   const { fs, D } = fb;
-  await fs.setDoc(fs.doc(D, 'users', user.uid, 'trips', dest), { json: JSON.stringify(data[dest] || {}), updated: fs.serverTimestamp() });
+  try {
+    await fs.setDoc(fs.doc(D, 'users', user.uid, 'trips', dest), { json: JSON.stringify(data[dest] || {}), updated: fs.serverTimestamp() });
+    setSync('ok');
+  } catch (e) { console.warn(e); setSync('error'); }
 }
+addEventListener('online', () => { if (user && syncState === 'error') Object.keys(data).forEach(pushCloud); });
 async function pullCloud() {
   const { fs, D } = fb;
   const snap = await fs.getDocs(fs.collection(D, 'users', user.uid, 'trips'));
@@ -69,8 +82,9 @@ export async function signOut() { if (fb) await fb.auth.signOut(fb.A); }
 function renderAuth() {
   const slot = document.getElementById('auth-slot');
   if (user) {
-    slot.innerHTML = `<button class="auth-btn" id="auth-btn" title="Cerrar sesión">${user.photoURL ? `<img src="${user.photoURL}" alt="">` : '<span class="g">✓</span>'}<span>${user.displayName?.split(' ')[0] || 'Cuenta'}</span></button>`;
-    slot.querySelector('button').onclick = () => confirm('¿Cerrar sesión?') && signOut();
+    slot.innerHTML = `<button class="auth-btn" id="auth-btn" title="Cerrar sesión">${user.photoURL ? `<img src="${user.photoURL}" alt="">` : '<span class="g">✓</span>'}<span>${user.displayName?.split(' ')[0] || 'Cuenta'}<small class="sync" style="display:block;font-size:11px;opacity:.75;font-weight:500"></small></span></button>`;
+    slot.querySelector('button').onclick = () => { location.hash = '#/ajustes'; };
+    setSync(syncState === 'idle' ? 'ok' : syncState);
   } else {
     slot.innerHTML = `<button class="auth-btn" id="auth-btn"><span class="g">G</span><span>${cloudReady() ? 'Entrar con Google' : 'Guardado local'}</span></button>`;
     slot.querySelector('button').onclick = signIn;

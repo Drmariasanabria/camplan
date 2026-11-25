@@ -7,9 +7,10 @@ const ASP = { N: 'N', NE: 'NE', E: 'E', SE: 'SE', S: 'S', SW: 'SO', W: 'O', NW: 
 let charts = [];
 
 const POINTS = ctx => {
-  const p = ctx.plan, b = p.base;
+  const p = ctx.plan, elev = b => b.elev || (b.town.startsWith('Grindelwald') ? 1034 : b.id === 'manor' ? 570 : 800);
+  const seen = new Set(), bases = p.stays.map(st => st.base).filter(b => !seen.has(b.id) && seen.add(b.id));
   return [
-    { id: 'base', name: `${b.town} (camping)`, pos: b.pos, elev: b.town.startsWith('Grindelwald') ? 1034 : b.id === 'manor' ? 570 : 800 },
+    ...bases.map((b, i) => ({ id: i ? 'base-' + b.id : 'base', name: `${b.town} (camping)`, pos: b.pos, elev: elev(b) })),
     { id: 'first', name: 'First (2.168 m)', pos: P.first, elev: 2168 },
     { id: 'kleine', name: 'Kleine Scheidegg (2.061 m)', pos: P.kleine, elev: 2061 },
     { id: 'murren', name: 'Mürren (1.638 m)', pos: P.murren, elev: 1638 },
