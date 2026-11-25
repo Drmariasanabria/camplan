@@ -66,7 +66,10 @@ async function route(quiet = false) {
     ctx.rerender = () => { const y = scrollY; route(true).then(() => scrollTo({ top: y, behavior: 'instant' })); };
     if (dest.prepare) {
       if (!quiet) view.innerHTML = `<div class="page"><p class="kicker">Calculando tu viaje</p><h1 class="title"><span class="loader" style="width:40px;height:40px;border-width:5px"></span></h1><p class="lead">Rutas reales, combustible de hoy y cambio de moneda…</p></div>`;
-      try { await dest.prepare(ctx); } catch (e) { console.warn('prepare', e); }
+      let slow = false;
+      const prep = dest.prepare(ctx).catch(e => console.warn('prepare', e));
+      await Promise.race([prep, new Promise(r => setTimeout(() => { slow = true; r(); }, 12000))]);
+      if (slow) prep.then(() => token === navToken && ctx.rerender()); // al llegar los datos reales, se recalcula
       if (token !== navToken) return; // el usuario ya navegó a otra sección
     }
     try { ctx.plan = dest.plan ? dest.plan(ctx) : null; } catch (e) { console.error(e); ctx.plan = null; }

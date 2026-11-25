@@ -1,13 +1,13 @@
 // Genera un roadbook imprimible (o «Guardar como PDF») a partir del plan calculado.
 import { ACTIVITIES, CONTACTS, STRATEGIES } from './data.js';
-import { fmtLong, fmtDate, hhmm } from './engine.js';
+import { fmtLong, fmtDate, hhmm, actById } from './engine.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const eur = n => (n || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 
 export function openRoadbook(p, ctx) {
   const c = p.cfg, done = ctx.get('prep', {}), notes = ctx.get('notes', '');
-  const A = id => ACTIVITIES.find(a => a.id === id);
+  const A = id => actById(id);
   const day = d => {
     if (d.travel) { const t = d.travel; return `<tr><td><b>${fmtDate(d.date)}</b></td><td>🚐 ${esc(t.from)} → ${esc(t.to)}<br><small>${Math.round(t.km)} km · ${t.totalH.toFixed(1)} h · salida ${c.departTime} · llegada ≈${hhmm(t.arrival)}${t.stop ? ` · ${esc(t.stop.addr)}` : ''}</small></td></tr>`; }
     if (d.kind === 'buffer') return `<tr><td><b>${fmtDate(d.date)}</b></td><td>Día colchón</td></tr>`;

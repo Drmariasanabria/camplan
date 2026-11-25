@@ -3,7 +3,10 @@ import { firebaseConfig } from '../firebase-config.js';
 import { toast, sfx } from './fx.js';
 
 const LS = 'roadbook:v1';
-let data = JSON.parse(localStorage.getItem(LS) || '{}');
+// Si el navegador bloquea el almacenamiento (modo privado estricto), se trabaja en memoria
+const store = (() => { try { const k = '__t'; localStorage.setItem(k, '1'); localStorage.removeItem(k); return localStorage; } catch { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)), removeItem: k => m.delete(k), key: i => [...m.keys()][i], get length() { return m.size; } }; } })();
+export const storageOK = store !== null && (() => { try { return store === localStorage; } catch { return false; } })();
+let data = (() => { try { return JSON.parse(store.getItem(LS) || '{}'); } catch { return {}; } })();
 let fb = null, user = null, saveTimer = null, syncState = 'idle';
 const listeners = new Set();
 
@@ -18,8 +21,8 @@ export function set(dest, key, val) {
   data[dest]._updated = Date.now();
   const s = JSON.stringify(data);
   // Tus datos tienen prioridad: si no cabe, se borra la caché de datos en vivo y se reintenta
-  try { localStorage.setItem(LS, s); }
-  catch { Object.keys(localStorage).filter(k => k.startsWith('live:')).forEach(k => localStorage.removeItem(k)); try { localStorage.setItem(LS, s); } catch (e) { console.error(e); } }
+  try { store.setItem(LS, s); }
+  catch { try { Object.keys(localStorage).filter(k => k.startsWith('live:')).forEach(k => localStorage.removeItem(k)); store.setItem(LS, s); } catch (e) { console.error(e); } }
   if (user) { setSync('pending'); clearTimeout(saveTimer); saveTimer = setTimeout(() => pushCloud(dest), 800); }
 }
 
@@ -55,7 +58,7 @@ async function pullCloud() {
     // gana el más reciente
     data[d.id] = (remote._updated || 0) >= (local._updated || 0) ? remote : local;
   });
-  localStorage.setItem(LS, JSON.stringify(data));
+  store.setItem(LS, JSON.stringify(data));
   for (const k of Object.keys(data)) pushCloud(k);
 }
 
@@ -96,5 +99,5 @@ export function exportJSON() {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'roadbook-backup.json'; a.click();
 }
 export function importJSON(file) {
-  return file.text().then(t => { data = JSON.parse(t); localStorage.setItem(LS, t); if (user) Object.keys(data).forEach(pushCloud); emit(); });
+  return file.text().then(t => { data = JSON.parse(t); store.setItem(LS, t); if (user) Object.keys(data).forEach(pushCloud); emit(); });
 }

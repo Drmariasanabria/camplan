@@ -1,5 +1,5 @@
 import { IMG, P, ACTIVITIES } from '../data.js';
-import { fmtDate } from '../engine.js';
+import { fmtDate, actById } from '../engine.js';
 
 export default {
   id: 'perros', title: 'Con los perros', icon: '🐕',
@@ -8,7 +8,7 @@ export default {
     const { ui, plan: p } = ctx, c = p.cfg, t = ui.term, n = c.dogs;
     if (!n) return `<p class="kicker">Perros</p><h1 class="title">Sin perros en este viaje</h1><p class="lead">Si viajáis con perros, indícalo en <a href="#/suiza/viaje">Mi viaje</a> y esta sección se rellena sola.</p>`;
     const kgFood = n * c.dogKg * 0.015 * (p.totalDays + 2);
-    const noDogDays = p.days.filter(d => d.kind === 'base' && ACTIVITIES.find(a => a.id === d.act)?.dogs === false);
+    const noDogDays = p.days.filter(d => d.kind === 'base' && actById(d.act)?.dogs === false);
     return `<p class="kicker">${n} perro${n > 1 ? 's' : ''} · ${ui.esc(c.dogNames)}</p><h1 class="title">Viajar <span class="grad-text">con los perros</span></h1>
     <p class="lead">El plan tiene que funcionar también los días de esquí. Aquí tienes requisitos, transporte, normas, cuidadores y veterinario.</p>
 

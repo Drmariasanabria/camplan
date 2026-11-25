@@ -18,7 +18,7 @@ export default {
     <h2>Dónde comprar</h2>
     <div class="grid g3">
       <div class="card"><span class="tag ok">1 · En Francia</span><h3>Compra grande antes de cruzar</h3><p>Pasta, legumbre, conservas, café, snacks y pienso. Respetad la ${t('aduana suiza', 'franquicia de aduana')}: ${c.adults} kg de carne y ${5 * c.adults} l de vino entre los ${c.adults}.</p></div>
-      <div class="card"><span class="tag ok">2 · Lidl y Aldi</span><h3>Reposición en Interlaken</h3><p>Lo más barato de Suiza. Coop y Migros son bastante más caros; Coop Grindelwald para lo del día.</p></div>
+      <div class="card"><span class="tag ok">2 · Lidl y Aldi</span><h3>Las cadenas más baratas</h3><p>Lidl y Aldi son lo más barato de Suiza; Coop y Migros, bastante más caros. En el mapa de abajo tienes los súper cerca de cada estancia.</p></div>
       <div class="card"><span class="tag">3 · Comer fuera</span><h3>≈25–35 CHF por persona</h3><p>Un menú en restaurante de montaña. Termo y bocadillo ahorran mucho. Tu presupuesto: ${c.eatOutMeals} comidas fuera.</p></div>
     </div>
     ${ui.table(['Tienda', 'Dirección', 'Precio', 'Nota'], SHOPS.map(s => [`<b>${s.name}</b>`, `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.name + ' ' + s.addr)}" target="_blank">${s.addr}</a>`, s.tier, s.note]))}
@@ -48,12 +48,13 @@ export default {
     <p class="small muted" id="osm"></p><div class="map" id="life-map"></div>`;
   },
   mount(el, { ui, live, plan }) {
-    const m = ui.makeMap(el.querySelector('#life-map'), [46.64, 7.93], 12);
-    SHOPS.forEach(s => L.marker(s.pos, { icon: ui.pin('🛒', s.tier === '€' ? '#1fae78' : '#d39a1c') }).addTo(m).bindPopup(`<b>${s.name}</b><br>${s.note}`));
-    L.marker(plan.base.pos, { icon: ui.pin('🏕️') }).addTo(m).bindPopup(plan.base.name);
+    const m = ui.makeMap(el.querySelector('#life-map'), plan.base.pos, 12);
+    plan.stays.forEach(st => L.marker(st.base.pos, { icon: ui.pin('🏕️') }).addTo(m).bindPopup(st.base.name));
+    if (plan.stays.length > 1) m.fitBounds(plan.stays.map(st => st.base.pos), { padding: [60, 60], maxZoom: 12 });
+    if (plan.stays.some(st => st.base.region === 'jungfrau')) SHOPS.forEach(s => L.marker(s.pos, { icon: ui.pin('🛒', s.tier === '€' ? '#1fae78' : '#d39a1c') }).addTo(m).bindPopup(`<b>${s.name}</b><br>${s.note}`));
     ui.osmLayer(el.querySelector('#osm'), async () => {
-      const bb = '(46.54,7.80,46.72,8.10)';
-      const d = await live.overpass(`[out:json][timeout:25];(nwr["shop"~"supermarket|convenience"]${bb};nwr["shop"="laundry"]${bb};nwr["amenity"="sanitary_dump_station"]${bb};nwr["amenity"="fuel"]${bb};);out center tags;`);
+      const boxes = [...new Map(plan.stays.map(st => [st.base.town, st.base.pos])).values()].map(([la, lo]) => `(${(la - .1).toFixed(3)},${(lo - .14).toFixed(3)},${(la + .1).toFixed(3)},${(lo + .14).toFixed(3)})`);
+      const d = await live.overpass(`[out:json][timeout:25];(${boxes.map(bb => `nwr["shop"~"supermarket|convenience"]${bb};nwr["shop"="laundry"]${bb};nwr["amenity"="sanitary_dump_station"]${bb};nwr["amenity"="fuel"]${bb};`).join('')});out center tags;`);
       const ico = t => t.shop === 'laundry' ? ['🧺 Lavandería', '#7c5cff'] : t.amenity === 'sanitary_dump_station' ? ['🚽 Vaciado', '#0aa3c2'] : t.amenity === 'fuel' ? ['⛽ Gasolinera', '#c24040'] : ['🛒 Tienda', '#1fae78'];
       let n = 0; d.elements.forEach(e => { const la = e.lat ?? e.center?.lat, lo = e.lon ?? e.center?.lon, t = e.tags || {}; if (!la) return; n++; const [k, col] = ico(t);
         L.circleMarker([la, lo], { radius: 6, color: col, fillColor: col, fillOpacity: .75, weight: 1 }).addTo(m).bindPopup(`${k}<br><b>${ui.esc(t.name || t.brand || '')}</b>${t.opening_hours ? '<br>🕑 ' + ui.esc(t.opening_hours) : ''}`); });

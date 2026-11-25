@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════
 //  MOTOR: convierte tu configuración en etapas, itinerario, plazos y costes.
 // ═══════════════════════════════════════════════════════════════════
-import { DEFAULT_CFG, P, STRATEGIES, STOPS, BASES, LIFTS, HIGH_SEASON, SKIPASS, HOLIDAYS, ACTIVITIES, PREP,
+import { DEFAULT_CFG, P, IMG, STRATEGIES, STOPS, BASES, LIFTS, HIGH_SEASON, SKIPASS, HOLIDAYS, ACTIVITIES, PREP, REGIONS, GENERIC_SEASON,
   WINTER_PASS_CHF, SLED_CHF, SITTER_CHF_H, VIGNETTE_CHF, CRITAIR_EUR, CCP_CARD_EUR } from './data.js';
 
 /* ─────────── Fechas ─────────── */
@@ -12,7 +12,40 @@ export const diffDays = (a, b) => Math.round((D(b) - D(a)) / 86400000);
 export const fmtDate = (s, o = { weekday: 'short', day: 'numeric', month: 'short' }) => D(s).toLocaleDateString('es-ES', o);
 export const fmtLong = s => D(s).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
 const inRange = (s, a, b) => s >= a && s <= b;
-export const liftOpen = (lift, s) => !lift || inRange(s, LIFTS[lift].from, LIFTS[lift].to);
+const LIFT = k => k === 'gen' ? { name: 'Remontes de la estación', ...GENERIC_SEASON } : LIFTS[k];
+export const liftOpen = (lift, s) => !lift || inRange(s, LIFT(lift).from, LIFT(lift).to);
+export const liftInfo = LIFT;
+
+/* ─────────── Zonas y actividades ─────────── */
+const near = (a, b) => Math.hypot(a[0] - b[0], (a[1] - b[1]) * 0.69) * 111;
+const CUSTOM = new Map();
+export function regionOf(id, place) {
+  const R = REGIONS.find(r => r.id === id); if (R) return R;
+  if (place?.pos) {
+    const n = REGIONS.map(r => [r, near(r.pos, place.pos)]).sort((a, b) => a[1] - b[1])[0];
+    if (n && n[1] < 12) return n[0];
+    const k = 'custom-' + place.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    if (!CUSTOM.has(k)) CUSTOM.set(k, { id: k, name: place.name, short: place.name.split(',')[0], pos: place.pos, elev: place.elev || 1100, top: 2500, web: `https://www.myswitzerland.com/es-es/` });
+    return CUSTOM.get(k);
+  }
+  return REGIONS[0];
+}
+const ACT_REG = new Map();
+const W = ([la, lo]) => ({ wikiloc: `https://www.wikiloc.com/wikiloc/map.do?sw=${(la - .05).toFixed(3)}%2C${(lo - .07).toFixed(3)}&ne=${(la + .05).toFixed(3)}%2C${(lo + .07).toFixed(3)}` });
+export function activitiesFor(R) {
+  if (R.detailed) return ACTIVITIES;
+  const s = R.short, mk = (k, o) => { const a = { id: `${k}@${R.id}`, region: R.id, img: IMG.jungfrau, pos: R.pos, generic: true, ...o }; ACT_REG.set(a.id, a); return a; };
+  return [
+    mk('ski', { type: 'ski', name: `Esquí en ${s}`, lift: 'gen', dogs: false, cost: 'Forfait de la estación', how: `Remontes desde ${s} (${R.top ? `hasta ≈${R.top} m` : ''}).`, text: `Dominio de esquí de ${R.name}. Comprobad pistas abiertas el mismo día en la web oficial.`, crit: 'Fechas de apertura por confirmar en la web de la estación.' }),
+    mk('hike', { type: 'hike', name: `Senderos invernales de ${s}`, lift: null, dogs: true, level: 'Fácil–media', cost: 'Gratis o remonte de subida', how: 'Rutas balizadas (señales rosas en invierno).', text: 'Caminos pisados y señalizados para caminar por la nieve: lo mejor con perros.', crit: 'Solo itinerarios abiertos y balizados.' }),
+    mk('snowshoe', { type: 'hike', name: `Raquetas en ${s}`, lift: null, dogs: true, level: 'Media', cost: 'Alquiler ≈20–30 CHF/día', how: 'Itinerarios de raquetas señalizados.', text: 'Rutas de raquetas balizadas por la zona.', crit: 'Fuera de balizas: boletín de aludes y material de seguridad.' }),
+    mk('valley', { type: 'valley', name: `Rodaje por el valle de ${s}`, lift: null, dogs: true, level: 'Fácil · trail', cost: 'Gratis', how: 'Desde el camping.', text: 'Caminos de fondo de valle para correr o pasear con los perros.', crit: 'Hielo en zonas de sombra.' }),
+    mk('sled', { type: 'hike', name: `Trineo en ${s}`, lift: null, dogs: false, cost: 'Billete de remonte + alquiler', how: 'Pistas de trineo de la estación.', text: 'Bajadas de trineo señalizadas.', crit: 'Sin perros en las pistas.' }),
+    mk('town', { type: 'town', name: `Pueblo de ${s} (termas o piscina si hay)`, lift: null, dogs: true, cost: 'Variable', how: '—', text: 'Día tranquilo: pueblo, piscina o termas y ducha caliente.', crit: '' }),
+    ...ACTIVITIES.filter(a => ['shop', 'rest'].includes(a.type)),
+  ].map(a => ({ ...a, links: W(R.pos) }));
+}
+export const actById = id => ACTIVITIES.find(a => a.id === id) || ACT_REG.get(id) || (id?.includes('@') ? (activitiesFor(regionOf(id.split('@')[1])), ACT_REG.get(id)) : null);
 export const isHigh = s => inRange(s, HIGH_SEASON[0], HIGH_SEASON[1]) || [0, 6].includes(D(s).getDay());
 
 /* ─────────── Configuración ─────────── */
@@ -31,14 +64,25 @@ function leg(a, b) {
   if (LEGS[k]) return LEGS[k];
   const km = hav(a, b) * 1.25; return { km, h: km / 88, coords: [[a[1], a[0]], [b[1], b[0]]], approx: true };
 }
-export const baseById = id => BASES.find(b => b.id === id) || BASES[0];
+export function baseById(id, place) {
+  const b = BASES.find(x => x.id === id); if (b) return b;
+  if (id?.startsWith('zone:') || id === 'place') {
+    const R = id === 'place' ? regionOf(null, place) : regionOf(id.slice(5), place);
+    return { id: `${id}${place ? '|' + place.name : ''}`, key: id, region: R.id, regionObj: R, generic: true,
+      name: place?.name || `Camping por elegir en ${R.short}`, town: R.short, pos: place?.pos || R.camperPos || R.pos, img: IMG.jungfrau, elev: R.elev,
+      pitch: 35, adult: 10, tax: 3, dog: 4, elec: 5, maxDogs: 9, opens: '2026-01-01', status: 'warn', verdict: place ? 'Confirmar invierno y perros' : 'Elige un camping',
+      toGrindelwald: '', toInterlaken: '', pros: [place ? 'Elegido por ti' : 'Elige un camping concreto en «Dónde dormir»', R.note].filter(Boolean), cons: [R.camper].filter(Boolean),
+      tel: place?.phone || '', mail: place?.email || '', web: place?.web || R.web, estimate: 'Estimación genérica: parcela ≈35 CHF + 10/adulto + tasa + perros + luz' };
+  }
+  return BASES[0];
+}
 /* Estancias en destino: [{ base, nights (0 = las que queden), price (0 = estimado) }] */
 export function staysOf(cfg) {
   const st = Array.isArray(cfg.stays) && cfg.stays.length ? cfg.stays : [{ base: cfg.base || 'jungfrau', nights: 0, price: cfg.nightPriceOverride || 0 }];
-  return st.map(x => ({ base: x.base, nights: +x.nights || 0, price: +x.price || 0 }));
+  return st.map(x => ({ base: x.base, nights: +x.nights || 0, price: +x.price || 0, place: x.place || null }));
 }
-export const baseOf = cfg => baseById(staysOf(cfg)[0].base);
-const lastBase = cfg => baseById(staysOf(cfg).at(-1).base);
+export const baseOf = cfg => { const s = staysOf(cfg)[0]; return baseById(s.base, s.place); };
+const lastBase = cfg => { const s = staysOf(cfg).at(-1); return baseById(s.base, s.place); };
 const posOf = (k, cfg, dir = 'out') => k === 'ORIGIN' ? cfg.origin.pos : k === 'BASE' ? (dir === 'ret' ? lastBase(cfg) : baseOf(cfg)).pos : P[k];
 
 export async function prepare(ctx) {
@@ -48,7 +92,7 @@ export async function prepare(ctx) {
     const ch = STRATEGIES[s].chain.map(k => posOf(k, cfg, dir));
     for (let i = 0; i < ch.length - 1; i++) pairs.set(key(ch[i], ch[i + 1]), [ch[i], ch[i + 1]]);
   }
-  const sb = staysOf(cfg).map(x => baseById(x.base).pos);
+  const sb = staysOf(cfg).map(x => baseById(x.base, x.place).pos);
   for (let i = 0; i < sb.length - 1; i++) if (key(sb[i], sb[i + 1]) !== key(sb[i + 1], sb[i + 1])) pairs.set(key(sb[i], sb[i + 1]), [sb[i], sb[i + 1]]);
   const todo = [...pairs.values()].filter(([a, b]) => !LEGS[key(a, b)]);
   const work = (async () => {
@@ -130,10 +174,10 @@ export function plan(ctx) {
   const raw = staysOf(cfg), fixed = raw.slice(0, -1).reduce((a, x) => a + Math.max(1, x.nights), 0);
   let cur = arrive;
   const stays = raw.map((x, i) => {
-    const b = baseById(x.base), n = i < raw.length - 1 ? Math.max(1, x.nights) : nights - fixed;
+    const b = baseById(x.base, x.place), n = i < raw.length - 1 ? Math.max(1, x.nights) : nights - fixed;
     const st = { i, base: b, nights: n, price: x.price, np: nightPrice(cfg, b, x.price), checkin: cur, checkout: addDays(cur, Math.max(0, n)) };
     cur = st.checkout;
-    if (i > 0) { const a = baseById(raw[i - 1].base).pos, l = leg(a, b.pos); st.transfer = { from: baseById(raw[i - 1].base), km: l.km, h: l.h * 1.12 }; }
+    if (i > 0) { const pb = baseById(raw[i - 1].base, raw[i - 1].place), l = leg(pb.pos, b.pos); st.transfer = { from: pb, km: l.km, h: l.h * 1.12 }; }
     return st;
   });
   if (raw.length > 1 && stays.at(-1).nights < 1) warn.push({ lvl: 'bad', t: `Las estancias suman ${fixed} noches pero solo hay ${nights}. Quita noches a alguna estancia o amplía el viaje.` });
@@ -155,53 +199,56 @@ export function plan(ctx) {
     days.push({ date: d, kind, travel: tr || null, hol: HOLIDAYS[d] || null, stay, transfer: stay && stay.i > 0 && d === stay.checkin ? stay.transfer : null });
   }
   // El plan automático se reparte dentro de cada zona (las actividades dependen de la región)
-  const baseDays = days.filter(x => x.kind === 'base');
-  [...new Set(baseDays.map(x => x.stay.base.region))].forEach(reg => autoPlan(baseDays.filter(x => x.stay.base.region === reg), cfg, reg));
-  baseDays.filter(x => x.transfer).forEach(x => { if (!x.act || ACTIVITIES.find(a => a.id === x.act)?.type === 'ski') { x.act = 'rest'; } x.auto = `Traslado ${x.transfer.from.name} → ${x.stay.base.name} (${Math.round(x.transfer.km)} km, ≈${x.transfer.h.toFixed(1)} h) y plan corto.`; });
+  const baseDays = days.filter(x => x.kind === 'base'); baseDays.forEach(x => x.__totalBase = baseDays.length);
+  [...new Set(baseDays.map(x => x.stay.base.region))].forEach(reg => { const ds = baseDays.filter(x => x.stay.base.region === reg); autoPlan(ds, cfg, ds[0].stay.base.regionObj || regionOf(reg)); });
+  baseDays.filter(x => x.transfer).forEach(x => { if (!x.act || actById(x.act)?.type === 'ski') { x.act = 'rest'; } x.auto = `Traslado ${x.transfer.from.name} → ${x.stay.base.name} (${Math.round(x.transfer.km)} km, ≈${x.transfer.h.toFixed(1)} h) y plan corto.`; });
   days.forEach(x => { const o = overrides[x.date]; if (o && x.kind === 'base') { if (o.act) x.act = o.act; if (o.alt !== undefined) x.alt = o.alt; if (o.note) x.note = o.note; x.edited = true; } });
-  days.forEach(x => { if (x.act) { const a = ACTIVITIES.find(z => z.id === x.act); if (a?.lift && !liftOpen(a.lift, x.date)) x.liftWarn = `${LIFTS[a.lift].name} abre el ${fmtDate(LIFTS[a.lift].from)}`; } });
+  days.forEach(x => { if (x.act) { const a = actById(x.act); if (a?.lift && !liftOpen(a.lift, x.date)) x.liftWarn = `${LIFT(a.lift).name}: temporada desde el ${fmtDate(LIFT(a.lift).from)}`; } });
 
-  const skiDates = days.filter(x => ACTIVITIES.find(a => a.id === x.act)?.type === 'ski').map(x => x.date);
-  const budget = costs(cfg, { out, ret, travelOut, travelRet, nights, base, stays, skiDates });
+  const skiDays = days.filter(x => actById(x.act)?.type === 'ski'), skiDates = skiDays.filter(x => x.stay?.base.region === 'jungfrau').map(x => x.date), skiOther = skiDays.length - skiDates.length;
+  const budget = costs(cfg, { out, ret, travelOut, travelRet, nights, base, stays, skiDates, skiOther });
   const prep = PREP.map(p => { let due = addDays(cfg.depart, -p.days); if (p.notBefore && due < p.notBefore) due = p.notBefore; return { ...p, due }; })
     .sort((a, b) => a.due.localeCompare(b.due));
 
-  return { cfg, base, endBase, stays, out, ret, travelOut, travelRet, arrive, leave, nights, homeArrive, days, warn, budget, prep, skiDates, fx: LIVE.fx,
+  return { cfg, base, endBase, stays, skiOther, out, ret, travelOut, travelRet, arrive, leave, nights, homeArrive, days, warn, budget, prep, skiDates, fx: LIVE.fx,
     totalDays: diffDays(cfg.depart, cfg.homeBy) + 1, approx: out.profile.approx || ret.profile.approx };
 }
 export const hhmm = h => `${String(Math.floor(h) % 24).padStart(2, '0')}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`;
 
 /* Reparto automático de actividades */
-function autoPlan(baseDays, cfg, region = 'jungfrau') {
+function autoPlan(baseDays, cfg, R) {
   if (!baseDays.length) return;
-  if (region !== 'jungfrau') { baseDays.forEach(x => { x.act = 'rest'; x.auto = 'Día libre en la zona (añade actividades de esta región en data.js).'; }); return; }
+  const acts = activitiesFor(R), A = id => acts.find(a => a.id === id), ok = (id, d) => A(id) && liftOpen(A(id).lift, d);
+  const SKI = R.detailed ? ['ski-first', 'ski-kleine', 'ski-murren', 'ski-kleine'] : [`ski@${R.id}`];
+  const DOGHIKE = R.detailed ? ['hike-bachalp', 'hike-mannlichen', 'hike-murren', 'valley-stechelberg'] : [`hike@${R.id}`, `valley@${R.id}`];
+  const POOL = R.detailed
+    ? ['hike-bachalp', 'hike-mannlichen', 'valley-stechelberg', 'hike-murren', 'hike-bort', cfg.interests.pool ? 'town-grindelwald' : null, cfg.interests.snowshoe ? 'hike-faulhorn' : null, cfg.interests.trail ? 'valley-aar' : null, cfg.interests.sled ? 'sled-pintenfritz' : null]
+    : [`hike@${R.id}`, cfg.interests.snowshoe ? `snowshoe@${R.id}` : null, cfg.interests.trail ? `valley@${R.id}` : null, cfg.interests.pool ? `town@${R.id}` : null, cfg.interests.sled ? `sled@${R.id}` : null];
+  const pool = POOL.filter(Boolean);
   const last = baseDays[baseDays.length - 1];
-  if (baseDays.length > 3) { last.act = 'valley-stechelberg'; last.auto = 'Día suave: preparar la salida (ropa seca, grises vacíos, depósito, cadenas a mano).'; }
+  if (baseDays.length > 3) { last.act = DOGHIKE.at(-1); last.auto = 'Día suave: preparar la salida (ropa seca, grises vacíos, depósito, cadenas a mano).'; }
   const mid = baseDays.length > 3 ? baseDays.slice(0, -1) : baseDays.slice();
-  // Compra: víspera del primer festivo cerrado (o mitad de estancia)
+  // Compra: víspera del primer festivo (o mitad de estancia)
   const firstClosed = mid.findIndex(x => x.hol?.kind === 'closed' || x.hol?.kind === 'half');
   let shopIdx = firstClosed > 0 ? firstClosed - 1 : Math.floor(mid.length / 2);
   if (mid[shopIdx]?.hol) shopIdx = Math.max(0, shopIdx - 1);
-  mid[shopIdx].act = 'shop'; mid[shopIdx].auto = 'Compra para los festivos, una colada y vaciado/llenado.';
-  // Esquí repartido
-  const free = mid.filter(x => !x.act), skiN = cfg.interests.ski && cfg.skiers > 0 ? Math.min(cfg.skiDays, free.length) : 0;
-  const skiable = free.filter(x => Object.keys(LIFTS).some(l => liftOpen(l, x.date)));
+  if (mid.length > 2 || firstClosed > 0) { mid[shopIdx].act = 'shop'; mid[shopIdx].auto = 'Compra para los próximos días, una colada y vaciado/llenado.'; }
+  // Esquí repartido (los días de esquí totales se reparten en proporción a las noches de cada zona)
+  const share = Math.round(cfg.skiDays * baseDays.length / Math.max(1, baseDays[0].__totalBase || baseDays.length));
+  const free = mid.filter(x => !x.act), skiN = cfg.interests.ski && cfg.skiers > 0 ? Math.min(share, free.length) : 0;
+  const skiable = free.filter(x => SKI.some(id => ok(id, x.date)));
   const pickIdx = n => Array.from({ length: n }, (_, i) => Math.round((i + 0.5) * skiable.length / n - 0.5));
-  const skiRot = ['ski-first', 'ski-kleine', 'ski-murren', 'ski-kleine'];
   let r = 0;
   pickIdx(Math.min(skiN, skiable.length)).forEach(i => { const x = skiable[i]; if (!x || x.act) return;
-    let a = skiRot[r++ % skiRot.length]; for (let t = 0; t < 4 && !liftOpen(ACTIVITIES.find(z => z.id === a).lift, x.date); t++) a = skiRot[r++ % skiRot.length];
-    x.act = a; x.alt = cfg.adults > cfg.skiers ? (['hike-bachalp', 'hike-mannlichen', 'hike-murren', 'valley-stechelberg'].find(h => liftOpen(ACTIVITIES.find(z => z.id === h).lift, x.date))) : ''; });
-  // Resto: rutas según intereses y aperturas
-  const pool = ['hike-bachalp', 'hike-mannlichen', 'valley-stechelberg', 'hike-murren', 'hike-bort', cfg.interests.pool ? 'town-grindelwald' : null,
-    cfg.interests.snowshoe ? 'hike-faulhorn' : null, cfg.interests.trail ? 'valley-aar' : null, cfg.interests.sled ? 'sled-pintenfritz' : null].filter(Boolean);
+    let a = SKI[r++ % SKI.length]; for (let t = 0; t < 4 && !ok(a, x.date); t++) a = SKI[r++ % SKI.length];
+    x.act = a; x.alt = cfg.adults > cfg.skiers ? (DOGHIKE.find(h => ok(h, x.date)) || '') : ''; });
   let streak = 0, pi = 0; const used = new Set();
   mid.forEach(x => {
     if (x.act) { streak = x.act === 'shop' ? 0 : streak + 1; return; }
     if (streak >= 3) { x.act = 'rest'; streak = 0; return; }
-    for (let t = 0; t < pool.length * 2; t++) { const a = pool[pi++ % pool.length], A = ACTIVITIES.find(z => z.id === a);
-      if (liftOpen(A.lift, x.date) && (!used.has(a) || used.size >= pool.length)) { x.act = a; used.add(a); break; } }
-    x.act ||= 'valley-stechelberg'; streak++;
+    for (let t = 0; t < pool.length * 2; t++) { const a = pool[pi++ % pool.length];
+      if (ok(a, x.date) && (!used.has(a) || used.size >= pool.length)) { x.act = a; used.add(a); break; } }
+    x.act ||= DOGHIKE.at(-1); streak++;
   });
 }
 
@@ -228,7 +275,8 @@ function costs(cfg, p) {
   const trKm = p.stays.reduce((a, st) => a + (st.transfer?.km || 0), 0);
   const totalDays = diffDays(cfg.depart, cfg.homeBy) + 1;
   const food = cfg.foodPerDay * totalDays + cfg.eatOutMeals * 30 / fx;
-  const ski = cfg.interests.ski ? (cfg.skiers * skipassCHF(cfg.skiDays, p.skiDates) + cfg.halfDays * cfg.skiers * 65) / fx : 0;
+  const jfDays = p.skiDates.length && p.skiOther ? p.skiDates.length : (p.skiOther ? 0 : cfg.skiDays);
+  const ski = cfg.interests.ski ? (cfg.skiers * (skipassCHF(jfDays, p.skiDates) + p.skiOther * (cfg.skiDayOther || 80)) + cfg.halfDays * cfg.skiers * 65) / fx : 0;
   const pass = cfg.winterPassDays * WINTER_PASS_CHF / fx, sled = cfg.sledRides * SLED_CHF / fx, sitter = cfg.sitterHours * SITTER_CHF_H / fx;
   const laundry = cfg.laundryLoads * 10 / fx, vign = VIGNETTE_CHF / fx + CRITAIR_EUR;
   const items = [
@@ -238,7 +286,7 @@ function costs(cfg, p) {
     { k: 'fr', l: 'Paradas en Francia', v: frNights, n: `${stops.length} noches${stops.some(t => t.stop.card) ? ' + tarjeta Camping-Car Park 5 €' : ''}` },
     { k: 'camp', l: p.stays.length > 1 ? `Campings en Suiza (${p.stays.length} estancias)` : `Camping ${p.base.name}`, v: camp, n: p.stays.map(st => `${st.base.name}: ${st.nights} n × ${st.np.toFixed(0)} CHF${st.price ? ' (tu precio)' : ''}`).join(' · ') + ` · ${cfg.adults} adultos, ${cfg.dogs} perros` },
     { k: 'food', l: 'Comida y compra', v: food, n: `${cfg.foodPerDay} €/día × ${totalDays} días${cfg.eatOutMeals ? ` + ${cfg.eatOutMeals} comidas fuera` : ''}` },
-    { k: 'ski', l: 'Forfaits de esquí', v: ski, n: cfg.interests.ski ? `${cfg.skiers} esquiador(es) × ${cfg.skiDays} días${cfg.halfDays ? ` + ${cfg.halfDays} medios días` : ''} · ${p.skiDates.some(isHigh) ? 'temporada alta' : 'temporada baja'}` : 'Sin esquí' },
+    { k: 'ski', l: 'Forfaits de esquí', v: ski, n: cfg.interests.ski ? `${cfg.skiers} esquiador(es) · ${jfDays ? `Jungfrau ${jfDays} días (${p.skiDates.some(isHigh) ? 'alta' : 'baja'})` : ''}${jfDays && p.skiOther ? ' + ' : ''}${p.skiOther ? `otras zonas ${p.skiOther} días × ${cfg.skiDayOther} CHF` : ''}${cfg.halfDays ? ` + ${cfg.halfDays} medios días` : ''}` : 'Sin esquí' },
     { k: 'pass', l: 'Pase invernal (no esquiadores)', v: pass, n: `${cfg.winterPassDays} días-persona × 61 CHF` },
     { k: 'sled', l: 'Trineo', v: sled, n: `${cfg.sledRides} × 55 CHF` },
     { k: 'sitter', l: 'Cuidador de perros', v: sitter, n: `${cfg.sitterHours} h × 20 CHF` },

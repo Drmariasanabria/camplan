@@ -20,7 +20,7 @@ setTerms(INFO);
 
 export default {
   meta: {
-    id: 'suiza', name: 'Suiza · Grindelwald', flag: '🇨🇭',
+    id: 'suiza', name: 'Suiza · Alpes', flag: '🇨🇭',
     backgrounds: [IMG.grindelwald, IMG.lauterbrunnen, IMG.eiger],
     footer: 'Precios y horarios orientativos comprobados en noviembre de 2026: confirmad antes de pagar. Que un sitio aparezca aquí no es una reserva.',
   },

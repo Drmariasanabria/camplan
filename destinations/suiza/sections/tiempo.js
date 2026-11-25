@@ -11,10 +11,12 @@ const POINTS = ctx => {
   const seen = new Set(), bases = p.stays.map(st => st.base).filter(b => !seen.has(b.id) && seen.add(b.id));
   return [
     ...bases.map((b, i) => ({ id: i ? 'base-' + b.id : 'base', name: `${b.town} (camping)`, pos: b.pos, elev: elev(b) })),
-    { id: 'first', name: 'First (2.168 m)', pos: P.first, elev: 2168 },
-    { id: 'kleine', name: 'Kleine Scheidegg (2.061 m)', pos: P.kleine, elev: 2061 },
-    { id: 'murren', name: 'Mürren (1.638 m)', pos: P.murren, elev: 1638 },
-    { id: 'faulhorn', name: 'Faulhorn (2.681 m)', pos: P.faulhorn, elev: 2681 },
+    ...(bases.some(b => b.region === 'jungfrau') ? [
+      { id: 'first', name: 'First (2.168 m)', pos: P.first, elev: 2168 },
+      { id: 'kleine', name: 'Kleine Scheidegg (2.061 m)', pos: P.kleine, elev: 2061 },
+      { id: 'murren', name: 'Mürren (1.638 m)', pos: P.murren, elev: 1638 },
+      { id: 'faulhorn', name: 'Faulhorn (2.681 m)', pos: P.faulhorn, elev: 2681 }] : []),
+    ...bases.filter(b => b.regionObj && !b.regionObj.detailed).map(b => ({ id: 'top-' + b.regionObj.id, name: `${b.regionObj.short} en cota alta (≈${b.regionObj.top} m)`, pos: b.regionObj.pos, elev: b.regionObj.top })),
     ...[...p.travelOut, ...p.travelRet].filter(t => t.stop).map(t => ({ id: 'st-' + t.stop.id, name: `${t.stop.name.replace('Camping-Car Park ', '')} · noche del ${fmtDate(t.date)}`, pos: t.stop.pos, elev: 500, date: t.date })),
     { id: 'massif', name: 'A89 Macizo Central (≈900 m)', pos: [45.78, 2.72], elev: 900 },
     { id: 'geneva', name: 'Ginebra · aduana', pos: P.bardonnex, elev: 450 },
@@ -39,7 +41,7 @@ export default {
     <div class="card no-tilt" id="hist"><span class="loader"></span></div>
 
     <h2>Peligro de aludes <span class="grad-text">hoy</span></h2>
-    <p>Boletín oficial del ${ui.term('SLF')} para las zonas de Lauterbrunnen, Jungfrau-Schilthorn, Grindelwald, Schreckhorn y Brienz-Interlaken. Escala de 1 a 5; desde el <b>3 (notable)</b> el terreno fuera de pistas ya es peligroso.</p>
+    <p>Boletín oficial del ${ui.term('SLF')} para las zonas donde dormís (${p.stays.map(st => ui.esc(st.base.town)).join(', ')}). Escala de 1 a 5; desde el <b>3 (notable)</b> el terreno fuera de pistas ya es peligroso.</p>
     <div class="grid g2" id="slf"><div class="card"><span class="loader"></span></div></div>
 
     <h2>Antes de subir, <span class="grad-text">mira esto</span></h2>
@@ -92,9 +94,12 @@ export default {
     el.querySelector('[data-seg=wxp]').onclick = e => { const b = e.target.closest('button'); if (!b) return; el.querySelectorAll('[data-seg=wxp] button').forEach(x => x.classList.toggle('on', x === b)); ctx.set('wxp', b.dataset.v); load(b.dataset.v).catch(console.error); };
     load(ctx.get('wxp', 'base')).catch(e => { console.error(e); el.querySelector('#now').innerHTML = '<div class="card">Meteo no disponible ahora.</div>'; });
     try {
-      const g = await live.slf(), f = g.features.filter(x => x.properties.regions.some(r => /^CH-(1233|1234|1241|1242|1243)$/.test(r.regionID)));
+      const inRing = (pt, ring) => { let ins = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const [xi, yi] = ring[i], [xj, yj] = ring[j]; if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi) ins = !ins; } return ins; };
+      const inGeo = (pt, g) => !g ? false : g.type === 'Polygon' ? inRing(pt, g.coordinates[0]) : g.type === 'MultiPolygon' ? g.coordinates.some(pl => inRing(pt, pl[0])) : false;
+      const pts = [...new Map(p.stays.map(st => [st.base.town, [st.base.pos[1], st.base.pos[0]]])).values()];
+      const g = await live.slf(), f = g.features.filter(x => pts.some(pt => inGeo(pt, x.geometry)));
       el.querySelector('#slf').innerHTML = (f.length ? f : g.features.slice(0, 1)).slice(0, 4).map(x => { const pr = x.properties, lv = Math.max(...pr.dangerRatings.map(d => LVL[d.mainValue] || 0));
-        return `<div class="card no-tilt"><div style="display:flex;gap:16px;align-items:center"><span class="danger d${lv}">${lv}</span><div><h3 style="margin:0">${LVL_ES[lv]}</h3><p class="small muted" style="margin:0">${pr.regions.filter(r => /^CH-12(3[34]|4[123])$/.test(r.regionID)).map(r => r.name).join(' · ')}</p></div></div>
+        return `<div class="card no-tilt"><div style="display:flex;gap:16px;align-items:center"><span class="danger d${lv}">${lv}</span><div><h3 style="margin:0">${LVL_ES[lv]}</h3><p class="small muted" style="margin:0">${pr.regions.slice(0, 6).map(r => r.name).join(' · ')}${pr.regions.length > 6 ? ` y ${pr.regions.length - 6} zonas más` : ''}</p></div></div>
         ${pr.avalancheProblems.map(a => `<p style="margin-top:12px"><b>${PROB[a.problemType] || a.problemType}</b>${a.elevation?.lowerBound ? ` · por encima de ${a.elevation.lowerBound} m` : ''}${a.elevation?.upperBound ? ` · por debajo de ${a.elevation.upperBound} m` : ''}${a.aspects?.length ? ` · laderas ${a.aspects.map(x => ASP[x] || x).join(', ')}` : ''}</p>`).join('')}
         <p class="source">Válido hasta ${new Date(pr.validTime.endTime).toLocaleString('es-ES', { weekday: 'short', hour: '2-digit', minute: '2-digit' })} · <a href="https://whiterisk.ch/en/conditions" target="_blank">boletín completo ↗</a></p></div>`; }).join('');
     } catch { el.querySelector('#slf').innerHTML = '<div class="card">Boletín no disponible ahora. <a href="https://whiterisk.ch/en/conditions" target="_blank">White Risk ↗</a></div>'; }

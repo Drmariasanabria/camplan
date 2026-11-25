@@ -26,6 +26,12 @@ export default {
     const st = ctx.get('campStatus', {});
     return `<p class="kicker">Alojamiento</p><h1 class="title">Dónde dormir <span class="grad-text">en Suiza</span></h1>
     <p class="lead">Vuestro plan: ${p.stays.map(st => `<b>${st.base.name}</b> ${fmtDate(st.checkin)} → ${fmtDate(st.checkout)} (${st.nights} n)`).join(' · ')}. Precios para <b>${c.adults} adultos y ${c.dogs} perro${c.dogs === 1 ? '' : 's'}</b>; las estancias se cambian en <a href="#/suiza/viaje">Mi viaje</a>. En el cantón de Berna está prohibido dormir fuera de campings y áreas autorizadas (multas de 200 a 2.000 CHF) y los parkings de Grindelwald para autocaravanas son solo de día.</p>
+    ${p.stays.map((st, i) => st.base.generic ? `<div class="card no-tilt" style="margin-bottom:20px"><span class="tag ${st.base.verdict === 'Elige un camping' ? 'warn' : 'ok'}">Estancia ${i + 1} · ${fmtDate(st.checkin)} → ${fmtDate(st.checkout)} · ${st.nights} noches</span>
+      <h3 style="font-size:26px">${st.base.verdict === 'Elige un camping' ? `Elige dónde dormir en ${ui.esc(st.base.town)}` : `📍 ${ui.esc(st.base.name)}`}</h3>
+      ${st.base.cons[0] ? `<p style="color:var(--warn)">🚐 ${st.base.cons[0]}</p>` : ''}
+      <p class="small muted">Campings y áreas de autocaravanas reales en ≈20 km a la redonda (OpenStreetMap). Antes de reservar confirmad por escrito que abren en invierno y aceptan ${c.dogs} perro${c.dogs === 1 ? '' : 's'}.</p>
+      <div id="near-${i}" data-near='${JSON.stringify({ i, pos: st.base.regionObj?.pos || st.base.pos })}'><span class="loader"></span></div>
+      <div class="btn-row">${ui.links([['park4night en la zona', `https://park4night.com/en/search?lat=${st.base.pos[0]}&lng=${st.base.pos[1]}&z=11`], ['Campercontact', 'https://www.campercontact.com/en/switzerland'], ['Campings en MySwitzerland', 'https://www.myswitzerland.com/es-es/'], ['Web oficial de la zona', st.base.regionObj?.web || st.base.web]])}</div></div>` : '').join('')}
     ${ui.table(['Camping', 'Pueblo', 'CHF / noche', `Si fueran las ${p.nights} noches`, 'Para vosotros', ''], rows.map(r => [
       `<b>${r.b.name}</b>${inStay(r.b.id).length ? ` <span class="badge ok">En tu plan · ${inStay(r.b.id).reduce((a, st) => a + st.nights, 0)} n</span>` : ''}`, r.b.town, r.np.toFixed(0), ui.eur(r.tot),
       r.issues.length ? `<span class="badge bad">${r.issues.join(' · ')}</span>` : `<span class="badge ${r.b.status === 'ok' ? 'ok' : 'warn'}">${r.b.verdict}</span>`,
@@ -60,6 +66,22 @@ export default {
   mount(el, ctx) {
     const { ui, live } = ctx;
     ui.copyButtons(el);
+    el.querySelectorAll('[data-near]').forEach(async box => {
+      const { i, pos } = JSON.parse(box.dataset.near), [la, lo] = pos, bb = `(${la - .18},${lo - .26},${la + .18},${lo + .26})`;
+      try {
+        const dist = (a, b) => Math.hypot(a[0] - b[0], (a[1] - b[1]) * 0.69) * 111;
+        const list = (await live.campsites(pos, 20)).map(x => ({ t: { ...x.tags, name: x.name, tourism: x.kind, 'addr:city': x.city }, pos: x.pos }))
+          .map(x => ({ ...x, km: dist(pos, x.pos) })).sort((a, b) => a.km - b.km).slice(0, 12);
+        box.innerHTML = list.length ? `<div class="table-wrap"><table><thead><tr><th>Lugar</th><th>Tipo</th><th class="num">Km</th><th>Datos</th><th></th></tr></thead><tbody>${list.map((x, k) => `<tr>
+          <td><b>${ui.esc(x.t.name)}</b>${x.t['addr:city'] ? `<br><span class="small muted">${ui.esc(x.t['addr:city'])}</span>` : ''}</td><td>${x.t.tourism === 'caravan_site' ? 'Área autocaravanas' : 'Camping'}</td><td class="num">${x.km.toFixed(0)}</td>
+          <td class="small">${[x.t.dog ? `🐕 ${x.t.dog === 'yes' ? 'perros sí' : x.t.dog === 'no' ? 'sin perros' : x.t.dog}` : '', x.t.opening_hours ? `🕑 ${ui.esc(x.t.opening_hours)}` : '', x.t.website ? `<a href="${ui.esc(x.t.website)}" target="_blank">web ↗</a>` : '', x.t.phone ? `<a href="tel:${ui.esc(x.t.phone)}">${ui.esc(x.t.phone)}</a>` : ''].filter(Boolean).join(' · ') || '—'}
+            · <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(x.t.name)}&query_place_id=" target="_blank">opiniones ↗</a></td>
+          <td><button class="btn sm" data-pick="${i}" data-k="${k}">Usar este</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">No hay campings registrados cerca en OpenStreetMap: mirad park4night.</p>';
+        box.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => { const x = list[+b.dataset.k], cfg = getCfg(ctx), sts = staysOf(cfg);
+          sts[i].place = { name: x.t.name, pos: x.pos, web: x.t.website || '', phone: x.t.phone || '', email: x.t.email || x.t['contact:email'] || '' };
+          cfg.stays = sts; ctx.set('cfg', cfg); ctx.toast('Camping elegido para la estancia ' + (i + 1)); ctx.rerender(); });
+      } catch { box.innerHTML = 'OpenStreetMap no responde ahora. <button class="btn sm" onclick="location.reload()">↻ Reintentar</button>'; }
+    });
     el.querySelectorAll('[data-base]').forEach(b => b.onclick = () => { const cfg = getCfg(ctx), st = staysOf(cfg), last = ctx.plan.stays.at(-1);
       if (st.length) st.at(-1).nights = Math.max(1, Math.floor((last?.nights || 2) / 2)); st.push({ base: b.dataset.base, nights: 0, price: 0 });
       cfg.stays = st; delete cfg.base; delete cfg.nightPriceOverride; ctx.set('cfg', cfg); ctx.toast('Estancia añadida: ajusta las noches en Mi viaje'); ctx.rerender(); });

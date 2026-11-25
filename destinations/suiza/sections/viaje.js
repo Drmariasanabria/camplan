@@ -1,12 +1,12 @@
-import { IMG, STRATEGIES, BASES, ACTIVITIES } from '../data.js';
-import { fmtDate, fmtLong, hhmm, nightPrice, diffDays, getCfg, staysOf } from '../engine.js';
+import { IMG, STRATEGIES, BASES, REGIONS } from '../data.js';
+import { fmtDate, fmtLong, hhmm, nightPrice, diffDays, getCfg, staysOf, actById } from '../engine.js';
 import { bindCfg, warnList } from '../common.js';
 import { openRoadbook } from '../roadbook.js';
 
 /* Panel «Ahora»: antes del viaje, tareas urgentes; durante, el plan de hoy */
 function nowPanel(ctx) {
   const { ui, plan: p } = ctx, c = p.cfg, today = new Date().toISOString().slice(0, 10), done = ctx.get('prep', {});
-  const ACT = id => ACTIVITIES.find(a => a.id === id);
+  const ACT = id => actById(id);
   if (today >= c.depart && today <= c.homeBy) {
     const d = p.days.find(x => x.date === today), nx = p.days.find(x => x.date > today);
     const what = d => d.travel ? `🚐 ${ui.esc(d.travel.from)} → ${ui.esc(d.travel.to)} · ${Math.round(d.travel.km)} km` : d.kind === 'buffer' ? 'Día colchón' : (ACT(d.act)?.name || 'Día libre');
@@ -33,7 +33,7 @@ export default {
     const driveOut = p.travelOut.reduce((a, d) => a + d.totalH, 0), driveRet = p.travelRet.reduce((a, d) => a + d.totalH, 0);
     const seg = (n, cls, label) => n > 0 ? `<div style="flex:${n};padding:12px 10px;border-radius:12px;background:${cls};font-weight:700;font-size:14px;text-align:center;min-width:60px">${label}</div>` : '';
     return `
-    <p class="kicker">Torrelavega → Grindelwald · camper</p>
+    <p class="kicker">${ui.esc(c.origin.name)} → ${p.stays.map(st => ui.esc(st.base.town)).join(' → ')} · camper</p>
     <h1 class="title">Configura <span class="grad-text">tu viaje</span></h1>
     <p class="lead">Cambia cualquier dato y todo se recalcula: etapas, paradas, días en Suiza, plan de cada día, plazos de los trámites, tiempo previsto, presupuesto y equipaje.</p>
     ${nowPanel(ctx)}
@@ -99,11 +99,17 @@ export default {
     <fieldset><legend>🏕️ Dónde dormís en Suiza</legend>
       <p class="small muted" style="margin-top:0">Divide la estancia en tantas paradas como queráis. La última se queda con las noches que sobren. Entre una y otra se añade un día de traslado.</p>
       ${p.stays.map((st, i) => `<div class="form-grid" style="align-items:end;padding:14px 0;border-top:${i ? '1px solid var(--line)' : '0'}">
-        <label class="field">Estancia ${i + 1} · ${fmtDate(st.checkin)} → ${fmtDate(st.checkout)}<select data-stay="${i}" data-k="base">${BASES.map(b => `<option value="${b.id}" ${b.id === st.base.id ? 'selected' : ''}>${b.name} (${b.town}) · ≈${nightPrice(c, b).toFixed(0)} CHF/noche</option>`).join('')}</select></label>
+        <label class="field">Estancia ${i + 1} · ${fmtDate(st.checkin)} → ${fmtDate(st.checkout)}<select data-stay="${i}" data-k="base">
+          <optgroup label="Jungfrau · campings revisados">${BASES.map(b => `<option value="${b.id}" ${b.id === st.base.id ? 'selected' : ''}>${b.name} (${b.town}) · ≈${nightPrice(c, b).toFixed(0)} CHF/noche</option>`).join('')}</optgroup>
+          <optgroup label="Otras zonas de montaña">${REGIONS.filter(r => !r.detailed).map(r => `<option value="zone:${r.id}" ${st.base.key === 'zone:' + r.id ? 'selected' : ''}>${r.name} · ${r.canton}</option>`).join('')}</optgroup>
+          ${st.base.key === 'place' ? `<option value="place" selected>📍 ${ui.esc(st.base.name)}</option>` : ''}
+        </select>${st.base.generic ? `<small>${st.base.verdict === 'Elige un camping' ? '⚠ Elige el camping concreto en «Dónde dormir»' : '📍 ' + ui.esc(st.base.name)}${st.base.cons[0] ? ` · 🚗 ${st.base.cons[0]}` : ''}</small>` : ''}</label>
         <label class="field">Noches${i === p.stays.length - 1 ? ' (las que quedan)' : ''}<input type="number" min="1" max="30" data-stay="${i}" data-k="nights" value="${st.nights}" ${i === p.stays.length - 1 ? 'disabled' : ''}></label>
         <label class="field">Precio real por noche (CHF)<input type="number" min="0" max="400" data-stay="${i}" data-k="price" value="${st.price}"><small>0 = estimado (${st.np.toFixed(0)} CHF)</small></label>
         <div>${p.stays.length > 1 ? `<button type="button" class="btn sm" data-stay-del="${i}">✕ Quitar</button>` : ''}${st.transfer ? `<p class="small muted" style="margin:6px 0 0">🚐 Traslado desde ${st.transfer.from.town}: ${Math.round(st.transfer.km)} km</p>` : ''}</div>
       </div>`).join('')}
+      <div class="form-grid" style="margin-top:10px"><label class="field">¿Otro lugar que no está en la lista?<input type="text" id="place-q" placeholder="Pueblo o valle de Suiza, p. ej. Arolla"></label><div style="display:flex;align-items:flex-end"><button type="button" class="btn" id="place-go">🔎 Buscar y añadir</button></div></div>
+      <div id="place-res" class="link-list" style="margin-top:10px"></div>
       <div class="btn-row"><button type="button" class="btn" id="stay-add">＋ Añadir otra estancia</button><a class="btn" href="#/suiza/dormir">Comparar campings y correos</a></div></fieldset>
 
     <fieldset><legend>🎿 Qué queréis hacer</legend>
@@ -133,7 +139,18 @@ export default {
     bindCfg(el, ctx);
     el.querySelector('#rb').onclick = () => openRoadbook(ctx.plan, ctx);
     const saveStays = fn => { const cfg = getCfg(ctx); const st = staysOf(cfg); fn(st); cfg.stays = st; delete cfg.base; delete cfg.nightPriceOverride; ctx.set('cfg', cfg); ctx.toast('Viaje recalculado'); ctx.rerender(); };
-    el.querySelectorAll('[data-stay]').forEach(i => i.addEventListener('change', () => saveStays(st => { st[+i.dataset.stay][i.dataset.k] = i.dataset.k === 'base' ? i.value : +i.value; })));
+    el.querySelectorAll('[data-stay]').forEach(i => i.addEventListener('change', () => saveStays(st => { const x = st[+i.dataset.stay];
+      if (i.dataset.k === 'base') { if (i.value !== 'place') { x.base = i.value; x.place = null; x.price = 0; } } else x[i.dataset.k] = +i.value; })));
+    const pres = el.querySelector('#place-res'), pgo = async () => {
+      const q = el.querySelector('#place-q').value.trim(); if (!q) return; pres.innerHTML = '<span class="loader"></span>';
+      try {
+        const list = (await ctx.live.geocode(q + ' Switzerland')).filter(r => r.pos[0] > 45.8 && r.pos[0] < 47.9 && r.pos[1] > 5.9 && r.pos[1] < 10.6);
+        pres.innerHTML = list.map((r, k) => `<a href="#" data-k="${k}">${ctx.ui.esc(r.name)}</a>`).join('') || 'No encuentro ese lugar en Suiza.';
+        pres.querySelectorAll('a').forEach(a => a.onclick = e => { e.preventDefault(); const r = list[+a.dataset.k];
+          saveStays(st => { const l = st.at(-1); if (l) l.nights = Math.max(1, Math.floor((ctx.plan.stays.at(-1).nights || 2) / 2)); st.push({ base: 'place', nights: 0, price: 0, place: { name: r.name.split(',')[0], pos: r.pos } }); }); });
+      } catch { pres.textContent = 'No se pudo buscar ahora.'; }
+    };
+    el.querySelector('#place-go').onclick = pgo; el.querySelector('#place-q').addEventListener('keydown', e => e.key === 'Enter' && (e.preventDefault(), pgo()));
     el.querySelectorAll('[data-stay-del]').forEach(b => b.onclick = () => saveStays(st => st.splice(+b.dataset.stayDel, 1)));
     el.querySelector('#stay-add').onclick = () => saveStays(st => { const l = st.at(-1); if (l) l.nights = Math.max(1, Math.floor((ctx.plan.stays.at(-1).nights || 2) / 2)); st.push({ base: 'gletscherdorf', nights: 0, price: 0 }); });
     const res = el.querySelector('#origin-res');

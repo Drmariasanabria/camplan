@@ -10,7 +10,7 @@ function writeCache(k, hit) {
   mem.set(k, hit);
   const s = JSON.stringify(hit);
   try { (s.length < 400000 ? localStorage : sessionStorage).setItem(k, s); }
-  catch { // sin espacio: borra lo más antiguo y reintenta una vez
+  catch { // sin espacio o almacenamiento bloqueado: borra lo más antiguo y reintenta una vez
     try { Object.keys(localStorage).filter(x => x.startsWith('live:')).slice(0, 40).forEach(x => localStorage.removeItem(x)); localStorage.setItem(k, s); } catch {}
   }
 }
@@ -117,3 +117,21 @@ export const geocode = (q) => cached('geo:' + q, 1440, async () => {
 
 /* GET JSON con caché */
 export const cachedJSON = (url, ttlMin = 30) => cached(url, ttlMin, () => j(url));
+
+/* Campings y áreas cerca de un punto: Overpass (con detalles) y, si falla, Photon (OpenStreetMap también) */
+export const campsites = (pos, km = 20) => cached(`camps:${pos.join(',')}:${km}`, 720, async () => {
+  const [la, lo] = pos, dLa = km / 111, dLo = km / 76;
+  try {
+    const d = await j('https://overpass-api.de/api/interpreter', { method: 'POST', signal: AbortSignal.timeout(12000), headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'data=' + encodeURIComponent(`[out:json][timeout:20];nwr["tourism"~"camp_site|caravan_site"](${la - dLa},${lo - dLo},${la + dLa},${lo + dLo});out center tags;`) });
+    return d.elements.map(e => ({ name: e.tags?.name, pos: [e.lat ?? e.center?.lat, e.lon ?? e.center?.lon], kind: e.tags?.tourism, city: e.tags?.['addr:city'] || '', tags: e.tags || {} })).filter(x => x.name && x.pos[0]);
+  } catch {
+    const bbox = [lo - dLo, la - dLa, lo + dLo, la + dLa].map(v => v.toFixed(3)).join(',');
+    const q = (word, tag) => j(`https://photon.komoot.io/api/?q=${word}&limit=40&osm_tag=tourism:${tag}&bbox=${bbox}`).then(d => d.features).catch(() => []);
+    const fs = (await Promise.all([q('camping', 'camp_site'), q('stellplatz', 'caravan_site'), q('aire', 'caravan_site')])).flat();
+    const seen = new Set();
+    return fs.filter(f => f.properties.country === 'Switzerland' || f.properties.countrycode === 'CH')
+      .map(f => ({ name: f.properties.name, pos: [f.geometry.coordinates[1], f.geometry.coordinates[0]], kind: f.properties.osm_value, city: f.properties.city || f.properties.county || '', tags: {} }))
+      .filter(x => x.name && !seen.has(x.name + x.pos[0].toFixed(3)) && seen.add(x.name + x.pos[0].toFixed(3)));
+  }
+});

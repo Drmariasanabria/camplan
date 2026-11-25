@@ -1,16 +1,16 @@
-import { IMG, ACTIVITIES, LIFTS } from '../data.js';
-import { D, fmtLong, hhmm, liftOpen, isHigh, addDays } from '../engine.js';
+import { IMG, LIFTS } from '../data.js';
+import { D, fmtLong, hhmm, liftOpen, isHigh, addDays, actById, activitiesFor, regionOf } from '../engine.js';
 import { warnList } from '../common.js';
 import { openRoadbook } from '../roadbook.js';
 
-const A = id => ACTIVITIES.find(a => a.id === id);
+const A = id => actById(id);
 const TYPE = { ski: '🎿 Esquí', hike: '🥾 Ruta', valley: '🏃 Valle', rest: '😌 Descanso', shop: '🛒 Logística', town: '🏊 Pueblo' };
 
 function travelCard(ctx, d) {
   const { ui } = ctx, t = d.travel, s = t.stop, c = ctx.plan.cfg, first = d.date === c.depart, last = t.dir === 'ret' && !s;
   const tips = [];
   if (t.dir === 'out' && first) tips.push(`Llenad el depósito en España antes de Irún: es bastante más barato que en Francia.`);
-  if (t.dir === 'out' && !s) tips.push(`Cruzad la ${ui.term('Bardonnex', 'aduana de Bardonnex')} a media mañana o mediodía, nunca de 5:30 a 9:30.`, `Parada técnica en el ${ui.term('Grauholz', 'área de Grauholz')}: agua y vaciado gratis.`, `Últimos 20 km por el valle: con nieve, cadenas a mano.`);
+  if (t.dir === 'out' && !s) tips.push(`Cruzad la ${ui.term('Bardonnex', 'aduana de Bardonnex')} a media mañana o mediodía, nunca de 5:30 a 9:30.`, ...(ctx.plan.base.pos[0] > 46.45 ? [`Si pasáis por Berna, parada técnica en el ${ui.term('Grauholz', 'área de Grauholz')}: agua y vaciado gratis.`] : []), `Últimos 20 km por el valle: con nieve, cadenas a mano.`);
   if (t.dir === 'ret' && d.date === ctx.plan.leave) tips.push(`Antes de salir: vaciado de ${ui.term('grises')} y agua en el camping. Llenad depósito en Francia (en Suiza es más caro).`);
   if (last) tips.push('Repostad en España nada más cruzar Irún.');
   if (s) tips.push(`${ui.term('Camping-Car Park')}${s.card ? '' : ''}: ${s.winter}`);
@@ -24,17 +24,18 @@ function travelCard(ctx, d) {
 
 function baseCard(ctx, d) {
   const { ui } = ctx, a = A(d.act) || A('rest'), c = ctx.plan.cfg, isSki = a.type === 'ski';
-  const opts = ACTIVITIES.map(x => `<option value="${x.id}" ${x.id === a.id ? 'selected' : ''}>${TYPE[x.type].split(' ')[0]} ${x.name}${liftOpen(x.lift, d.date) ? '' : ' (remonte cerrado)'}${x.dogs ? '' : ' · sin perros'}</option>`).join('');
-  const dogOpts = ACTIVITIES.filter(x => x.dogs && x.type !== 'shop').map(x => `<option value="${x.id}" ${x.id === d.alt ? 'selected' : ''}>${x.name}</option>`).join('');
+  const LIST = activitiesFor(d.stay?.base.regionObj || regionOf(d.stay?.base.region));
+  const opts = LIST.map(x => `<option value="${x.id}" ${x.id === a.id ? 'selected' : ''}>${TYPE[x.type].split(' ')[0]} ${x.name}${liftOpen(x.lift, d.date) ? '' : ' (remonte cerrado)'}${x.dogs ? '' : ' · sin perros'}</option>`).join('');
+  const dogOpts = LIST.filter(x => x.dogs && x.type !== 'shop').map(x => `<option value="${x.id}" ${x.id === d.alt ? 'selected' : ''}>${x.name}</option>`).join('');
   const altTxt = isSki ? (c.adults > c.skiers ? (A(d.alt) ? `Quien no esquía, con los perros: <b>${A(d.alt).name}</b>.` : 'Quien no esquía se queda con los perros (elige plan abajo).')
     : `Esquiáis todos: los perros necesitan ${ui.term('petsitting24', 'cuidador')}. No los dejéis horas en la furgo.`) : '';
-  const lifts = Object.entries(LIFTS).filter(([k]) => liftOpen(k, d.date)).map(([, l]) => l.name);
+  const lifts = d.stay?.base.region === 'jungfrau' ? Object.entries(LIFTS).filter(([k]) => liftOpen(k, d.date)).map(([, l]) => l.name) : [`Consultar en ${d.stay?.base.town}`];
   return `<div class="day base" id="d-${d.date}"><div class="dd"><b>${D(d.date).getDate()}</b><span>${D(d.date).toLocaleDateString('es-ES', { weekday: 'long' })}</span></div>
   <div><div class="badges"><span class="badge info">📍 ${d.stay?.base.town || ''}</span>${d.transfer ? '<span class="badge warn">🚐 Día de traslado</span>' : ''}<span class="badge ok">${TYPE[a.type]}</span>${d.hol ? `<span class="badge ${d.hol.kind === 'closed' ? 'bad' : 'warn'}">${d.hol.name}: ${d.hol.note}</span>` : ''}${isHigh(d.date) ? '<span class="badge">Tarifa alta remontes</span>' : ''}${d.liftWarn ? `<span class="badge bad">⚠ ${d.liftWarn}</span>` : ''}${a.dogs ? '<span class="badge info">🐕 Con perros</span>' : '<span class="badge warn">Sin perros</span>'}${d.edited ? '<span class="badge">Editado por ti</span>' : ''}</div>
     <h3>${a.name}</h3>
     ${d.auto ? `<p><b>${d.auto}</b></p>` : ''}
     <p>${a.text}</p>
-    <p class="small muted">${a.km ? `${a.km} km · ${a.time} · ${a.up} · ` : ''}Cómo: ${a.how} · Coste: ${a.cost.replace('Forfait', ui.term('forfait', 'forfait')).replace('Pase invernal', ui.term('pase invernal', 'pase invernal'))}</p>
+    <p class="small muted">${a.km ? `${a.km} km · ${a.time} · ${a.up} · ` : ''}Cómo: ${a.how} · Coste: ${a.generic ? a.cost : a.cost.replace('Forfait', ui.term('forfait', 'forfait')).replace('Pase invernal', ui.term('pase invernal', 'pase invernal'))}${a.links ? ` · <a href="${a.links.wikiloc}" target="_blank">rutas en Wikiloc ↗</a>` : ''}</p>
     ${a.crit ? `<p class="small" style="color:var(--warn)">⚠ ${a.crit}</p>` : ''}
     ${altTxt ? `<p class="small">🐕 ${altTxt}</p>` : ''}
     <p class="small muted">Remontes abiertos ese día: ${lifts.join(' · ') || 'ninguno'}</p>

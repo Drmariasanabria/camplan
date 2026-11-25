@@ -36,7 +36,8 @@ export function startParticles() {
 }
 
 /* ---------------- Sonido (WebAudio, sin ficheros) ---------------- */
-let actx = null, soundOn = localStorage.getItem('sfx') !== 'off';
+const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } }, lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+let actx = null, soundOn = lsGet('sfx') !== 'off';
 function ac() { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); return actx; }
 function tone(freq, dur = 0.08, type = 'sine', vol = 0.05, slide = 0) {
   if (!soundOn) return;
@@ -60,7 +61,7 @@ export function initSound() {
   const btn = document.getElementById('sound-toggle');
   const paint = () => btn.textContent = soundOn ? '🔊' : '🔇';
   paint();
-  btn.addEventListener('click', () => { soundOn = !soundOn; localStorage.setItem('sfx', soundOn ? 'on' : 'off'); paint(); sfx.click(); });
+  btn.addEventListener('click', () => { soundOn = !soundOn; lsSet('sfx', soundOn ? 'on' : 'off'); paint(); sfx.click(); });
   let last = 0;
   if (matchMedia('(hover: hover)').matches) document.addEventListener('pointerover', e => {
     const el = e.target.closest('a,button,.check,.card');

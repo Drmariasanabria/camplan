@@ -28,6 +28,7 @@ export const DEFAULT_CFG = {
   interests: { ski: true, tour: false, trail: true, snowshoe: true, sled: false, pool: true },
   foodPerDay: 28, localKm: 150, laundryLoads: 2, insurance: 0, contingencyPct: 7, eatOutMeals: 0,
   fuelES: 0, fuelFR: 0, // 0 = usar precio en vivo
+  skiDayOther: 80, // CHF/día de forfait fuera de la Jungfrau (editable)
 };
 
 /* ─────────────── Puntos ─────────────── */
@@ -48,17 +49,17 @@ export const P = {
    posibles cuelgan de un punto de la cadena (at) con un desvío (detourKm). */
 export const STRATEGIES = {
   A: { name: 'Autopista', short: 'Autopista', color: '#5ee7ff', vanFactor: 1.0,
-       chain: ['ORIGIN', 'irun', 'bordeaux', 'brive', 'ussel', 'clermont', 'thiers', 'lyonA46', 'pontdain', 'bardonnex', 'grauholz', 'interlaken', 'BASE'],
+       chain: ['ORIGIN', 'irun', 'bordeaux', 'brive', 'ussel', 'clermont', 'thiers', 'lyonA46', 'pontdain', 'bardonnex', 'BASE'],
        tollsC1: 110, tollsC2: 165,
        what: 'Todo por autopista: A-8/AP-8 → Irún → A63 → Burdeos → A89 por el Macizo Central → rodea Lyon por la A46 → A42/A40 → Ginebra → autopistas suizas.',
        pros: ['La más rápida y predecible', 'Menos fatiga en invierno', 'Más paradas seguras (áreas vigiladas)'], cons: ['Peajes más caros (A89 Burdeos–Lyon ≈59 € solo ese tramo)'] },
   B: { name: 'Mixta por la RCEA (ahorro)', short: 'Mixta', color: '#ff5ea8', vanFactor: 1.04,
-       chain: ['ORIGIN', 'irun', 'bordeaux', 'angouleme', 'chaptelat', 'montlucon', 'digoin', 'macon', 'bourg', 'bardonnex', 'grauholz', 'interlaken', 'BASE'],
+       chain: ['ORIGIN', 'irun', 'bordeaux', 'angouleme', 'chaptelat', 'montlucon', 'digoin', 'macon', 'bourg', 'bardonnex', 'BASE'],
        tollsC1: 55, tollsC2: 83, rcea: true,
        what: 'Peaje solo donde compensa (AP-8, A63, A40) y el resto por la RCEA, una nacional casi toda a 2×2 carriles y gratis: Burdeos → Limoges → Montluçon → A79 → Digoin → Mâcon → Bourg-en-Bresse.',
        pros: ['Ahorra ≈100–120 € de peajes ida y vuelta', 'Gasóleo algo menor a 90–110 km/h'], cons: ['≈2 h más por trayecto', 'Tramo A79 sin barreras: hay que pagar online en 72 h', 'Camiones; atención con niebla y hielo'] },
   D: { name: 'Sin ningún peaje', short: 'Sin peajes', color: '#ffc65c', vanFactor: 1.15,
-       chain: ['ORIGIN', 'irun', 'bordeaux', 'angouleme', 'chaptelat', 'montlucon', 'digoin', 'macon', 'bourg', 'bardonnex', 'grauholz', 'interlaken', 'BASE'],
+       chain: ['ORIGIN', 'irun', 'bordeaux', 'angouleme', 'chaptelat', 'montlucon', 'digoin', 'macon', 'bourg', 'bardonnex', 'BASE'],
        tollsC1: 0, tollsC2: 0, rcea: true,
        what: 'Igual que la mixta pero evitando también la AP-8, la A63 (Landas por nacional) y la A40 (puerto Nantua–Bellegarde).',
        pros: ['0 € de peajes'], cons: ['≈4 h más por trayecto', 'Puertos con nieve en diciembre (Nantua–Bellegarde)', 'No recomendable en invierno con camper'] },
@@ -253,3 +254,34 @@ export const CONTACTS = [
   ['Stellplatz Hof Rubi', 'Grindelwald', '+41 79 434 43 85'],
   ['Sportzentrum Grindelwald', 'Grindelwald', '+41 33 854 12 30'],
 ];
+
+/* ═══════════════ Otras zonas de montaña de Suiza ═══════════════
+   Datos estables (situación, altitud, web oficial, acceso). Lo que cambia cada día
+   (campings abiertos, remontes, tiempo, aludes) se consulta en vivo por coordenadas. */
+export const REGIONS = [
+  { id: 'jungfrau', name: 'Jungfrau (Grindelwald · Lauterbrunnen · Wengen · Mürren)', short: 'Jungfrau', canton: 'Berna', pos: [46.6242, 8.0414], elev: 1034, top: 2970, web: 'https://www.jungfrau.ch/', detailed: true },
+  { id: 'zermatt', name: 'Zermatt – Matterhorn', short: 'Zermatt', canton: 'Valais', pos: [46.0207, 7.7491], elev: 1608, top: 3883, web: 'https://www.zermatt.ch/',
+    camper: 'Pueblo sin coches: la camper se queda en Täsch (aparcamiento y tren lanzadera a Zermatt).', camperPos: [46.0684, 7.7778] },
+  { id: 'saasfee', name: 'Saas-Fee – Saastal', short: 'Saas-Fee', canton: 'Valais', pos: [46.1083, 7.9286], elev: 1800, top: 3500, web: 'https://www.saas-fee.ch/',
+    camper: 'Saas-Fee es sin coches: aparcamiento a la entrada del pueblo. Saas-Grund y Saas-Almagell sí tienen acceso.' },
+  { id: 'aletsch', name: 'Aletsch Arena (Riederalp · Bettmeralp · Fiesch)', short: 'Aletsch', canton: 'Valais', pos: [46.3556, 8.0447], elev: 760, top: 2869, web: 'https://www.aletscharena.ch/',
+    camper: 'Los pueblos de arriba son sin coches: se sube en teleférico desde el valle (Mörel, Betten, Fiesch).' },
+  { id: 'verbier', name: 'Verbier – 4 Vallées', short: 'Verbier', canton: 'Valais', pos: [46.0961, 7.2286], elev: 1500, top: 3330, web: 'https://www.verbier.ch/' },
+  { id: 'cransmontana', name: 'Crans-Montana', short: 'Crans-Montana', canton: 'Valais', pos: [46.3072, 7.4806], elev: 1500, top: 3000, web: 'https://www.crans-montana.ch/' },
+  { id: 'anniviers', name: "Val d'Anniviers (Grimentz · Zinal)", short: 'Anniviers', canton: 'Valais', pos: [46.1797, 7.5761], elev: 1570, top: 2900, web: 'https://www.valdanniviers.ch/' },
+  { id: 'leukerbad', name: 'Leukerbad (esquí y termas)', short: 'Leukerbad', canton: 'Valais', pos: [46.38, 7.6267], elev: 1411, top: 2700, web: 'https://www.leukerbad.ch/' },
+  { id: 'champery', name: 'Champéry – Portes du Soleil', short: 'Champéry', canton: 'Valais', pos: [46.1775, 6.8697], elev: 1050, top: 2400, web: 'https://www.champery.ch/', note: 'La zona más cercana a Ginebra.' },
+  { id: 'adelboden', name: 'Adelboden – Lenk', short: 'Adelboden', canton: 'Berna', pos: [46.492, 7.56], elev: 1350, top: 2360, web: 'https://www.adelboden.ch/' },
+  { id: 'kandersteg', name: 'Kandersteg (senderismo invernal y fondo)', short: 'Kandersteg', canton: 'Berna', pos: [46.4947, 7.6731], elev: 1176, top: 2000, web: 'https://www.kandersteg.ch/' },
+  { id: 'gstaad', name: 'Gstaad – Glacier 3000', short: 'Gstaad', canton: 'Berna', pos: [46.475, 7.2861], elev: 1050, top: 3000, web: 'https://www.gstaad.ch/' },
+  { id: 'engelberg', name: 'Engelberg – Titlis', short: 'Engelberg', canton: 'Obwalden', pos: [46.8197, 8.4036], elev: 1000, top: 3020, web: 'https://www.engelberg.ch/' },
+  { id: 'andermatt', name: 'Andermatt – Sedrun', short: 'Andermatt', canton: 'Uri', pos: [46.6356, 8.5939], elev: 1447, top: 2960, web: 'https://www.andermatt.ch/',
+    camper: 'Varios puertos alpinos de la zona cierran en invierno: comprobad el acceso antes de ir.' },
+  { id: 'laax', name: 'Flims – Laax', short: 'Laax', canton: 'Grisones', pos: [46.8095, 9.258], elev: 1100, top: 3018, web: 'https://www.flimslaax.com/' },
+  { id: 'arosa', name: 'Arosa – Lenzerheide', short: 'Arosa', canton: 'Grisones', pos: [46.7783, 9.6794], elev: 1775, top: 2865, web: 'https://arosalenzerheide.swiss/' },
+  { id: 'davos', name: 'Davos – Klosters', short: 'Davos', canton: 'Grisones', pos: [46.8027, 9.836], elev: 1560, top: 2840, web: 'https://www.davos.ch/' },
+  { id: 'engadin', name: 'Engadina – St. Moritz', short: 'St. Moritz', canton: 'Grisones', pos: [46.4983, 9.839], elev: 1822, top: 3300, web: 'https://www.engadin.ch/',
+    note: 'Lejos de Ginebra: desde España compensa entrar a Suiza por Basilea.' },
+];
+export const GENERIC_SEASON = { from: '2026-12-05', to: '2027-04-11' };
+export const SKI_DAY_OTHER_CHF = 80;
