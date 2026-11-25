@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Roadbook · Viajes en camper</title>
+<meta name="theme-color" content="#070b14" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800;900&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+  <!-- Fondo: foto en movimiento + partículas -->
+  <div id="bg" aria-hidden="true"><div class="bg-img a"></div><div class="bg-img b"></div><div class="bg-shade"></div></div>
+  <canvas id="particles" aria-hidden="true"></canvas>
+  <div id="cursor-glow" aria-hidden="true"></div>
+
+  <header id="topbar">
+    <a href="#/" class="brand" data-sfx="click"><span class="brand-dot"></span>ROADBOOK</a>
+    <nav id="dest-switch"></nav>
+    <div class="top-actions">
+      <button id="sound-toggle" class="icon-btn" title="Sonido" data-sfx="click">🔊</button>
+      <button id="menu-toggle" class="icon-btn" title="Menú" data-sfx="click">☰</button>
+      <div id="auth-slot"></div>
+    </div>
+  </header>
+
+  <aside id="sidenav" aria-label="Secciones"></aside>
+
+  <main id="view" tabindex="-1"></main>
+
+  <div id="toast"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

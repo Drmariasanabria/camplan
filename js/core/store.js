@@ -1,0 +1,86 @@
+// Estado persistente por destino. Local siempre; nube (Firestore) si hay sesión de Google.
+import { firebaseConfig } from '../firebase-config.js';
+import { toast, sfx } from './fx.js';
+
+const LS = 'roadbook:v1';
+let data = JSON.parse(localStorage.getItem(LS) || '{}');
+let fb = null, user = null, saveTimer = null;
+const listeners = new Set();
+
+export const cloudReady = () => !!firebaseConfig.apiKey;
+export const currentUser = () => user;
+export const onChange = fn => listeners.add(fn);
+const emit = () => listeners.forEach(fn => fn({ user, data }));
+
+export function get(dest, key, def) { return data[dest]?.[key] ?? def; }
+export function set(dest, key, val) {
+  (data[dest] ||= {})[key] = val;
+  data[dest]._updated = Date.now();
+  localStorage.setItem(LS, JSON.stringify(data));
+  if (user) { clearTimeout(saveTimer); saveTimer = setTimeout(() => pushCloud(dest), 800); }
+}
+
+async function loadFirebase() {
+  if (fb) return fb;
+  const v = '10.12.2', base = `https://www.gstatic.com/firebasejs/${v}/`;
+  const [app, auth, fs] = await Promise.all([import(base + 'firebase-app.js'), import(base + 'firebase-auth.js'), import(base + 'firebase-firestore.js')]);
+  const a = app.initializeApp(firebaseConfig);
+  fb = { auth, fs, A: auth.getAuth(a), D: fs.getFirestore(a) };
+  return fb;
+}
+
+async function pushCloud(dest) {
+  if (!user) return;
+  const { fs, D } = fb;
+  await fs.setDoc(fs.doc(D, 'users', user.uid, 'trips', dest), { json: JSON.stringify(data[dest] || {}), updated: fs.serverTimestamp() });
+}
+async function pullCloud() {
+  const { fs, D } = fb;
+  const snap = await fs.getDocs(fs.collection(D, 'users', user.uid, 'trips'));
+  snap.forEach(d => {
+    const remote = JSON.parse(d.data().json || '{}'), local = data[d.id] || {};
+    // gana el más reciente
+    data[d.id] = (remote._updated || 0) >= (local._updated || 0) ? remote : local;
+  });
+  localStorage.setItem(LS, JSON.stringify(data));
+  for (const k of Object.keys(data)) pushCloud(k);
+}
+
+export async function initAuth() {
+  renderAuth();
+  if (!cloudReady()) return;
+  try {
+    const { auth, A } = await loadFirebase();
+    auth.onAuthStateChanged(A, async u => {
+      user = u;
+      if (u) { await pullCloud(); toast(`☁️ Sincronizado como ${u.displayName?.split(' ')[0] || 'tú'}`); sfx.success(); }
+      renderAuth(); emit();
+    });
+  } catch (e) { console.warn('Firebase no disponible', e); }
+}
+
+export async function signIn() {
+  if (!cloudReady()) { location.hash = '#/ajustes'; toast('Configura Firebase para activar el login con Google'); return; }
+  const { auth, A } = await loadFirebase();
+  await auth.signInWithPopup(A, new auth.GoogleAuthProvider());
+}
+export async function signOut() { if (fb) await fb.auth.signOut(fb.A); }
+
+function renderAuth() {
+  const slot = document.getElementById('auth-slot');
+  if (user) {
+    slot.innerHTML = `<button class="auth-btn" id="auth-btn" title="Cerrar sesión">${user.photoURL ? `<img src="${user.photoURL}" alt="">` : '<span class="g">✓</span>'}<span>${user.displayName?.split(' ')[0] || 'Cuenta'}</span></button>`;
+    slot.querySelector('button').onclick = () => confirm('¿Cerrar sesión?') && signOut();
+  } else {
+    slot.innerHTML = `<button class="auth-btn" id="auth-btn"><span class="g">G</span><span>${cloudReady() ? 'Entrar con Google' : 'Guardado local'}</span></button>`;
+    slot.querySelector('button').onclick = signIn;
+  }
+}
+
+export function exportJSON() {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'roadbook-backup.json'; a.click();
+}
+export function importJSON(file) {
+  return file.text().then(t => { data = JSON.parse(t); localStorage.setItem(LS, t); if (user) Object.keys(data).forEach(pushCloud); emit(); });
+}
