@@ -1,4 +1,4 @@
-# Roadbook · Grindelwald en camper (dic 2026)
+# CAMPlan · planificador de viajes en camper
 
 Web estática (HTML + JS modules, sin build). Unifica la *Guía PRO* y el *Plan de viaje* y añade datos en vivo.
 

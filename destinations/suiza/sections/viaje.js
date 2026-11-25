@@ -56,7 +56,7 @@ export default {
       ${seg(c.bufferDay ? 1 : 0, 'rgba(255,255,255,.08)', 'Colchón')}
     </div>
     <p class="small muted" style="margin-bottom:14px">Del ${fmtLong(c.depart)} al ${fmtLong(c.homeBy)} · ${p.totalDays} días · <a href="#/suiza/itinerario">ver el plan de cada día →</a></p>
-    <div class="btn-row" style="margin-top:0"><button class="btn primary" id="rb">📄 Descargar roadbook (PDF)</button><a class="btn" href="#/suiza/itinerario">🗓️ Plan día a día</a><a class="btn" href="#/suiza/preparar">✅ Antes de salir</a></div>
+    <div class="btn-row" style="margin-top:0"><button class="btn primary" id="rb">📄 Descargar el plan en PDF</button><a class="btn" href="#/suiza/itinerario">🗓️ Plan día a día</a><a class="btn" href="#/suiza/preparar">✅ Antes de salir</a></div>
     ${warnList(p)}
 
     <form onsubmit="return false">

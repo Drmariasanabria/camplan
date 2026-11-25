@@ -46,7 +46,7 @@ function baseCard(ctx, d) {
 }
 
 function ics(p) {
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Roadbook//ES'];
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//CAMPlan//ES'];
   const ds = s => s.replace(/-/g, '');
   p.days.forEach(d => {
     const title = d.travel ? `🚐 ${d.travel.from} → ${d.travel.to} (${Math.round(d.travel.km)} km)` : d.kind === 'buffer' ? 'Día colchón' : (A(d.act)?.name || 'Día libre');
@@ -65,7 +65,7 @@ export default {
     <p class="lead">Generado con tus fechas, las aperturas de remontes, los festivos de Navidad y vuestros intereses. Cambia cualquier día: se guarda y el presupuesto se ajusta.</p>
     ${warnList(p)}
     <div class="callout"><h3>Rutina cada mañana antes de decidir</h3><p>1) Estado de pistas y senderos · 2) Tiempo, viento y ${ui.term('SLF', 'peligro de aludes')} · 3) Normas para perros en ese transporte · 4) Hora de puesta de sol (≈16:45) · 5) Cómo volvéis al camping.</p></div>
-    <div class="btn-row"><button class="btn" id="ics">📆 Añadir al calendario</button><button class="btn primary" id="print">📄 Roadbook en PDF</button><button class="btn" id="auto">↺ Volver al plan automático</button></div>
+    <div class="btn-row"><button class="btn" id="ics">📆 Añadir al calendario</button><button class="btn primary" id="print">📄 Plan en PDF</button><button class="btn" id="auto">↺ Volver al plan automático</button></div>
     ${p.days.map(d => d.travel ? travelCard(ctx, d) : d.kind === 'buffer'
       ? `<div class="day buffer"><div class="dd"><b>${D(d.date).getDate()}</b><span>${D(d.date).toLocaleDateString('es-ES', { weekday: 'long' })}</span></div><div><h3>Día colchón</h3><p>En casa. Margen por si una nevada o un corte retrasa la vuelta.</p></div></div>`
       : baseCard(ctx, d)).join('')}`;
@@ -76,6 +76,6 @@ export default {
     }));
     el.querySelector('#auto').onclick = () => { ctx.set('dayplan', {}); ctx.rerender(); };
     el.querySelector('#print').onclick = () => openRoadbook(ctx.plan, ctx);
-    el.querySelector('#ics').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([ics(ctx.plan)], { type: 'text/calendar' })); a.download = 'viaje-grindelwald.ics'; a.click(); };
+    el.querySelector('#ics').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([ics(ctx.plan)], { type: 'text/calendar' })); a.download = 'camplan-viaje.ics'; a.click(); };
   },
 };

@@ -14,7 +14,7 @@ export function openRoadbook(p, ctx) {
     const a = A(d.act) || A('rest'), alt = A(d.alt);
     return `<tr><td><b>${fmtDate(d.date)}</b>${d.hol ? `<br><small>${d.hol.name}</small>` : ''}</td><td><b>${a.name}</b>${d.auto ? ` — ${esc(d.auto)}` : ''}<br><small>${esc(a.how)}${a.crit ? ` · ⚠ ${esc(a.crit)}` : ''}${alt && a.type === 'ski' ? ` · Con los perros: ${alt.name}` : ''}${d.note ? ` · Nota: ${esc(d.note)}` : ''}</small></td></tr>`;
   };
-  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Roadbook ${fmtDate(c.depart)} – ${fmtDate(c.homeBy)}</title>
+  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>CAMPlan ${fmtDate(c.depart)} – ${fmtDate(c.homeBy)}</title>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
     @page{size:A4;margin:14mm}
@@ -34,7 +34,7 @@ export function openRoadbook(p, ctx) {
     @media print{.print{display:none}}
   </style></head><body>
   <button class="print" onclick="print()">Imprimir / Guardar PDF</button>
-  <div class="cover"><small>ROADBOOK · CAMPER</small><h1>${esc(c.origin.name)} → ${p.stays.map(st => esc(st.base.town)).join(' → ')}</h1>
+  <div class="cover"><small>CAMPlan · PLAN DE VIAJE</small><h1>${esc(c.origin.name)} → ${p.stays.map(st => esc(st.base.town)).join(' → ')}</h1>
     <p>${fmtLong(c.depart)} – ${fmtLong(c.homeBy)} · ${c.adults} adultos · ${c.dogs} perro${c.dogs === 1 ? '' : 's'} (${esc(c.dogNames)}) · ${esc(c.van.name)}</p></div>
   <div class="kv"><div>Llegada al camping<b>${fmtDate(p.arrive)}</b></div><div>Noches en Suiza<b>${p.nights}</b></div><div>Kilómetros<b>${Math.round(p.budget.km).toLocaleString('es-ES')}</b></div><div>Presupuesto<b>${eur(p.budget.total)}</b></div></div>
   ${p.warn.map(w => `<div class="warn">⚠ ${esc(w.t)}</div>`).join('')}
@@ -56,6 +56,6 @@ export function openRoadbook(p, ctx) {
   // Si el navegador bloquea la ventana, se descarga el roadbook como archivo
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
-  a.download = `roadbook-${c.depart}.html`; a.click();
-  ctx.toast('Roadbook descargado: ábrelo y pulsa «Imprimir / Guardar PDF»');
+  a.download = `camplan-${c.depart}.html`; a.click();
+  ctx.toast('Plan descargado: ábrelo y pulsa «Imprimir / Guardar PDF»');
 }

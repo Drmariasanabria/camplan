@@ -53,7 +53,7 @@ async function route(quiet = false) {
     renderDestSwitch(null); renderSide(null);
     bgs = DESTINATIONS.filter(d => d.cover).map(d => d.cover);
     html = homeHTML();
-    document.title = 'Roadbook · Viajes en camper';
+    document.title = 'CAMPlan · Viajes en camper';
   } else if (a === 'ajustes') {
     renderDestSwitch(null); renderSide(null);
     html = settingsHTML(); mount = mountSettings;
@@ -81,7 +81,7 @@ async function route(quiet = false) {
     let body;
     try { body = (dest.bar && ctx.plan ? dest.bar(ctx, sec) : '') + sec.render(ctx); } catch (e) { console.error(e); body = `<h1 class="title">${sec.icon} ${sec.title}</h1>` + errorCard(e, sec.title); }
     html = `<div class="page" data-section="${sec.id}">${body}${pager(dest, sec)}${footer(dest)}</div>`;
-    document.title = `${sec.title} · ${dest.meta.name} · Roadbook`;
+    document.title = `${sec.title} · ${dest.meta.name} · CAMPlan`;
     mount = el => sec.mount?.(el, ctx);
     bgs = sec.bg || dest.meta.backgrounds;
   }
@@ -102,7 +102,7 @@ const footer = dest => `<div class="foot">${dest.meta.footer || ''}</div>`;
 
 function homeHTML() {
   return `<section class="hero" style="min-height:60vh">
-    <p class="kicker">Roadbook · camper edition</p>
+    <p class="kicker">CAMPlan · planificador de viajes en camper</p>
     <h1 class="title">Viajes que <span class="grad-text">se planifican</span> solos.</h1>
     <p class="lead">Cada destino es un módulo autocontenido con su ruta, pernoctas, papeles, meteo en vivo, presupuesto y equipaje. Elige uno.</p>
   </section>

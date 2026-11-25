@@ -96,7 +96,7 @@ function renderAuth() {
 
 export function exportJSON() {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'roadbook-backup.json'; a.click();
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'camplan-copia.json'; a.click();
 }
 export function importJSON(file) {
   return file.text().then(t => { data = JSON.parse(t); store.setItem(LS, t); if (user) Object.keys(data).forEach(pushCloud); emit(); });

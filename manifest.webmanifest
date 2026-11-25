@@ -1,6 +1,6 @@
 {
-  "name": "Roadbook · Viajes en camper",
-  "short_name": "Roadbook",
+  "name": "CAMPlan · Viajes en camper",
+  "short_name": "CAMPlan",
   "description": "Planificador de viajes en camper con datos en vivo: ruta, paradas, tiempo, presupuesto y equipaje.",
   "start_url": "./#/suiza/viaje",
   "scope": "./",
