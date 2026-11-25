@@ -2,7 +2,7 @@
 // - Código propio: primero red (siempre la última versión), si no hay red, la copia guardada.
 // - Librerías, fuentes, fotos y teselas de mapa ya vistas: primero caché.
 // - Las APIs en vivo las gestiona la propia app (guarda los últimos datos).
-const V = 'roadbook-v6';
+const V = 'roadbook-v7';
 const SHELL = [
   './', './index.html', './css/app.css', './manifest.webmanifest',
   './js/app.js', './js/firebase-config.js', './js/core/fx.js', './js/core/live.js', './js/core/store.js', './js/core/ui.js',
@@ -23,7 +23,9 @@ self.addEventListener('fetch', e => {
   const req = e.request; if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin === location.origin) {
-    e.respondWith(fetch(req).then(r => { if (r.ok) { const cp = r.clone(); caches.open(V).then(c => c.put(req, cp)); } return r; })
+    // no-cache: revalida con el servidor (rápido, 304) para no mezclar versiones tras publicar
+    const fresh = req.mode === 'navigate' ? fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }) : fetch(req, { cache: 'no-cache' });
+    e.respondWith(fresh.then(r => { if (r.ok) { const cp = r.clone(); caches.open(V).then(c => c.put(req, cp)); } return r; })
       .catch(() => caches.match(req, { ignoreSearch: true }).then(r => r || caches.match('./index.html'))));
     return;
   }
