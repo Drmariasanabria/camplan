@@ -68,9 +68,10 @@ export async function initAuth() {
   try {
     const { auth, A } = await loadFirebase();
     auth.onAuthStateChanged(A, async u => {
-      user = u;
+      const changed = !!u !== !!user; user = u;
       if (u) { await pullCloud(); toast(`☁️ Sincronizado como ${u.displayName?.split(' ')[0] || 'tú'}`); sfx.success(); }
-      renderAuth(); emit();
+      renderAuth();
+      if (changed) emit(); // solo se repinta si de verdad cambia la sesión
     });
   } catch (e) { console.warn('Firebase no disponible', e); }
 }

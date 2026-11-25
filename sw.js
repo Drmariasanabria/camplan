@@ -2,7 +2,7 @@
 // - Código propio: primero red (siempre la última versión), si no hay red, la copia guardada.
 // - Librerías, fuentes, fotos y teselas de mapa ya vistas: primero caché.
 // - Las APIs en vivo las gestiona la propia app (guarda los últimos datos).
-const V = 'roadbook-20261125112723';
+const V = 'roadbook-20261125112914';
 const SHELL = [
   './', './index.html', './css/app.css', './manifest.webmanifest',
   './js/app.js', './js/firebase-config.js', './js/core/fx.js', './js/core/live.js', './js/core/store.js', './js/core/ui.js',
