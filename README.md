@@ -21,8 +21,9 @@ js/core/store.js       guardado local + Firebase (Google login + Firestore)
 js/core/ui.js          componentes reutilizables (tablas, checklists, mapas…)
 js/firebase-config.js  ← pega aquí tu config de Firebase
 destinations/registry.js           lista de destinos
-destinations/suiza/data.js         TODOS los datos del viaje (editar aquí)
-destinations/suiza/sections/*.js   una sección = un fichero
+destinations/suiza/data.js         datos del destino: rutas, paradas, campings, actividades, explicaciones
+destinations/suiza/engine.js       motor: fechas → etapas, itinerario, plazos y presupuesto
+destinations/suiza/sections/*.js   una sección = un fichero (todas leen el plan calculado)
 ```
 
 **Añadir otro destino:** copia `destinations/suiza/` a `destinations/<nuevo>/`, cambia `data.js`/secciones y añade una entrada en `registry.js`. El resto de la app no se toca.

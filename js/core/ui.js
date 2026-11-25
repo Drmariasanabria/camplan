@@ -76,3 +76,44 @@ export async function osmLayer(statusEl, run) {
 }
 export const pin =(emoji, color = '#7c5cff') => L.divIcon({ className: '', iconSize: [38, 38], iconAnchor: [19, 19],
   html: `<div style="width:38px;height:38px;border-radius:50%;background:${color};display:grid;place-items:center;font-size:19px;box-shadow:0 0 0 4px rgba(255,255,255,.15),0 6px 20px ${color}">${emoji}</div>` });
+
+/* ─────────── Términos clicables con ficha emergente ─────────── */
+let TERMS = {};
+export const setTerms = t => { TERMS = t; };
+export const term = (key, label) => `<button type="button" class="term" data-term="${esc(key)}">${label ?? esc(key)}</button>`;
+/* Ficha libre (no necesita estar en el diccionario) */
+export const info = (label, title, body, linksArr = []) => {
+  const id = 'i' + Math.random().toString(36).slice(2, 9);
+  TERMS[id] = { t: title, d: body, l: linksArr };
+  return `<button type="button" class="term" data-term="${id}">${label}</button>`;
+};
+function closePop() { document.getElementById('pop')?.remove(); }
+document.addEventListener('click', e => {
+  const b = e.target.closest('.term');
+  if (!b) { if (!e.target.closest('#pop')) closePop(); return; }
+  e.preventDefault(); e.stopPropagation(); closePop();
+  const it = TERMS[b.dataset.term]; if (!it) return;
+  const pop = document.createElement('div'); pop.id = 'pop';
+  pop.innerHTML = `<button class="x" aria-label="Cerrar">✕</button><h4>${it.t}</h4><p>${it.d}</p>${it.l?.length ? `<div class="link-list">${it.l.map(([t, h]) => `<a href="${h}" target="_blank" rel="noopener">${t} ↗</a>`).join('')}</div>` : ''}`;
+  document.body.appendChild(pop);
+  const r = b.getBoundingClientRect(), w = Math.min(440, innerWidth - 24);
+  pop.style.width = w + 'px';
+  pop.style.left = Math.max(12, Math.min(r.left + scrollX, scrollX + innerWidth - w - 12)) + 'px';
+  const below = r.bottom + scrollY + 10, h = pop.offsetHeight;
+  pop.style.top = (r.bottom + h + 20 > innerHeight && r.top > h + 20 ? r.top + scrollY - h - 10 : below) + 'px';
+  pop.querySelector('.x').onclick = closePop;
+});
+addEventListener('keydown', e => e.key === 'Escape' && closePop());
+addEventListener('hashchange', closePop);
+
+/* ─────────── Formularios ─────────── */
+export const num = (id, label, v, { min = 0, max = 999, step = 1, hint = '' } = {}) =>
+  `<label class="field">${label}<input type="number" data-cfg="${id}" value="${v}" min="${min}" max="${max}" step="${step}">${hint ? `<small>${hint}</small>` : ''}</label>`;
+export const txt = (id, label, v, hint = '') => `<label class="field">${label}<input type="text" data-cfg="${id}" value="${esc(v)}">${hint ? `<small>${hint}</small>` : ''}</label>`;
+export const dateIn = (id, label, v, hint = '') => `<label class="field">${label}<input type="date" data-cfg="${id}" value="${v}">${hint ? `<small>${hint}</small>` : ''}</label>`;
+export const timeIn = (id, label, v, hint = '') => `<label class="field">${label}<input type="time" data-cfg="${id}" value="${v}">${hint ? `<small>${hint}</small>` : ''}</label>`;
+export const sel = (id, label, v, opts, hint = '') => `<label class="field">${label}<select data-cfg="${id}">${opts.map(([k, t]) => `<option value="${k}" ${String(k) === String(v) ? 'selected' : ''}>${t}</option>`).join('')}</select>${hint ? `<small>${hint}</small>` : ''}</label>`;
+export const tog = (id, label, v) => `<label class="toggle"><input type="checkbox" data-cfg="${id}" ${v ? 'checked' : ''}>${label}</label>`;
+/* Lee/escribe rutas tipo "van.height" */
+export const getPath = (o, p) => p.split('.').reduce((a, k) => a?.[k], o);
+export function setPath(o, p, v) { const ks = p.split('.'); let t = o; ks.slice(0, -1).forEach(k => t = (t[k] ||= {})); t[ks.at(-1)] = v; return o; }

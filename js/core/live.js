@@ -40,18 +40,20 @@ export const WMO = c => ({0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️'
 export const slf = () => cached('slf', 60, () => j('https://aws.slf.ch/api/bulletin/caaml/en/geojson'));
 
 /* Gasóleo Francia (flux instantané, gouv) – más barato en radio */
-export const fuelFR = (lat, lon, km = 20) => cached(`ffr:${lat},${lon},${km}`, 60, async () => {
-  const where = encodeURIComponent(`within_distance(geom, geom'POINT(${lon} ${lat})', ${km}km) and gazole_prix is not null`);
-  const d = await j(`https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?select=id,adresse,ville,gazole_prix,gazole_maj,geom&where=${where}&order_by=gazole_prix&limit=5`);
-  return d.results;
+export const fuelFR = (lat, lon, km = 20, type = 'diesel') => cached(`ffr:${lat},${lon},${km},${type}`, 60, async () => {
+  const f = type === 'diesel' ? 'gazole' : 'e10';
+  const where = encodeURIComponent(`within_distance(geom, geom'POINT(${lon} ${lat})', ${km}km) and ${f}_prix is not null`);
+  const d = await j(`https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?select=id,adresse,ville,${f}_prix,${f}_maj,geom&where=${where}&order_by=${f}_prix&limit=5`);
+  return d.results.map(r => ({ price: r[f + '_prix'], town: r.ville, addr: r.adresse, lat: r.geom.lat, lon: r.geom.lon, updated: r[f + '_maj'] }));
 });
 
 /* Gasóleo España (Ministerio, REST) – por provincia */
-export const fuelES = (prov) => cached(`fes:${prov}`, 60, async () => {
+export const fuelES = (prov, type = 'diesel') => cached(`fes:${prov}:${type}`, 60, async () => {
+  const F = type === 'diesel' ? 'Precio Gasoleo A' : 'Precio Gasolina 95 E5';
   const d = await j(`https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/FiltroProvincia/${prov}`);
   const n = s => parseFloat(String(s).replace(',', '.'));
-  return d.ListaEESSPrecio.filter(e => e['Precio Gasoleo A']).map(e => ({
-    name: e['Rótulo'], addr: e['Dirección'], town: e['Localidad'], price: n(e['Precio Gasoleo A']),
+  return d.ListaEESSPrecio.filter(e => e[F]).map(e => ({
+    name: e['Rótulo'], addr: e['Dirección'], town: e['Localidad'], price: n(e[F]),
     lat: n(e['Latitud']), lon: n(e['Longitud (WGS84)']), hours: e['Horario'],
   })).sort((a, b) => a.price - b.price);
 });
@@ -86,3 +88,12 @@ export const commons = (q, n = 8) => cached(`cm:${q}:${n}`, 1440, async () => {
     .slice(0, n)
     .map(p => ({ src: p.imageinfo[0].thumburl, page: p.imageinfo[0].descriptionurl, title: p.title.replace(/^File:|\.\w+$/g, ''), author: (p.imageinfo[0].extmetadata?.Artist?.value || '').replace(/<[^>]+>/g, '') }));
 });
+
+/* Buscar un lugar (Photon / OpenStreetMap) */
+export const geocode = (q) => cached('geo:' + q, 1440, async () => {
+  const d = await j(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5&lang=en`);
+  return d.features.map(f => ({ name: [f.properties.name, f.properties.city || f.properties.county, f.properties.country].filter(Boolean).join(', '), pos: [f.geometry.coordinates[1], f.geometry.coordinates[0]] }));
+});
+
+/* GET JSON con caché */
+export const cachedJSON = (url, ttlMin = 30) => cached(url, ttlMin, () => j(url));

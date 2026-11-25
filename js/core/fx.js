@@ -89,9 +89,11 @@ export function setBackgrounds(urls) {
 
 /* ---------------- Reveal + tilt ---------------- */
 const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0.08 });
-export function enhance(root) {
-  root.querySelectorAll('.card, h2, .table-wrap, .callout, .map').forEach((el, i) => {
-    if (!el.classList.contains('reveal')) { el.classList.add('reveal'); el.style.transitionDelay = (i % 6) * 60 + 'ms'; io.observe(el); }
+export function enhance(root, instant = false) {
+  root.querySelectorAll('.card, h2, .table-wrap, .callout, .map, .day, fieldset').forEach((el, i) => {
+    if (el.classList.contains('reveal')) return;
+    el.classList.add('reveal'); if (instant) { el.classList.add('in'); return; }
+    el.style.transitionDelay = (i % 6) * 60 + 'ms'; io.observe(el);
   });
   root.querySelectorAll('.card').forEach(card => {
     card.addEventListener('pointermove', e => {
@@ -102,6 +104,7 @@ export function enhance(root) {
     card.addEventListener('pointerleave', () => card.style.transform = '');
   });
   // Contadores animados
+  if (instant) return;
   root.querySelectorAll('[data-count]').forEach(el => {
     const end = parseFloat(el.dataset.count), dec = +(el.dataset.dec || 0), pre = el.dataset.pre || '', suf = el.dataset.suf || '';
     const t0 = performance.now();

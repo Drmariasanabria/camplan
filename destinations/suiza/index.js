@@ -1,22 +1,29 @@
-// Módulo autocontenido del destino Suiza. Exporta meta + secciones en orden.
-import { IMG } from './data.js';
-import inicio from './sections/inicio.js';
+// Módulo autocontenido del destino Suiza: datos + motor + secciones.
+import { IMG, INFO } from './data.js';
+import { prepare, plan } from './engine.js';
+import { bar } from './common.js';
+import { setTerms } from '../../js/core/ui.js';
+import viaje from './sections/viaje.js';
+import itinerario from './sections/itinerario.js';
+import preparar from './sections/preparar.js';
 import ruta from './sections/ruta.js';
-import pernoctas from './sections/pernoctas.js';
-import tramites from './sections/tramites.js';
-import meteo from './sections/meteo.js';
+import dormir from './sections/dormir.js';
+import tiempo from './sections/tiempo.js';
 import actividades from './sections/actividades.js';
 import perros from './sections/perros.js';
-import diaria from './sections/diaria.js';
+import destino from './sections/destino.js';
 import presupuesto from './sections/presupuesto.js';
 import equipaje from './sections/equipaje.js';
-import seguridad from './sections/seguridad.js';
+import emergencias from './sections/emergencias.js';
+
+setTerms(INFO);
 
 export default {
   meta: {
     id: 'suiza', name: 'Suiza · Grindelwald', flag: '🇨🇭',
     backgrounds: [IMG.grindelwald, IMG.lauterbrunnen, IMG.eiger],
-    footer: 'Roadbook Grindelwald 2026 · basado en la Guía PRO y el Plan de viaje (revisados 22/11/2026). Precios orientativos: confirmar antes de pagar. La información publicada no es una reserva.',
+    footer: 'Precios y horarios orientativos comprobados en noviembre de 2026: confirmad antes de pagar. Que un sitio aparezca aquí no es una reserva.',
   },
-  sections: [inicio, ruta, pernoctas, tramites, meteo, actividades, perros, diaria, presupuesto, equipaje, seguridad],
+  prepare, plan, bar,
+  sections: [viaje, itinerario, preparar, ruta, dormir, tiempo, actividades, perros, destino, presupuesto, equipaje, emergencias],
 };

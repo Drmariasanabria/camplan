@@ -40,7 +40,7 @@ function ctxFor(destId) {
   };
 }
 
-async function route() {
+async function route(quiet = false) {
   document.body.classList.remove('nav-open');
   const [, a, b] = location.hash.replace(/^#/, '').split('/');
   let html, mount, bgs;
@@ -58,16 +58,21 @@ async function route() {
     const sec = dest.sections.find(s => s.id === b) || dest.sections[0];
     renderDestSwitch(a); renderSide(dest, sec.id);
     const ctx = ctxFor(a);
-    html = `<div class="page" data-section="${sec.id}">${sec.render(ctx)}${pager(dest, sec)}${footer(dest)}</div>`;
+    ctx.rerender = () => { const y = scrollY; route(true).then(() => scrollTo({ top: y, behavior: 'instant' })); };
+    if (dest.prepare) {
+      if (!quiet) view.innerHTML = `<div class="page"><p class="kicker">Calculando tu viaje</p><h1 class="title"><span class="loader" style="width:40px;height:40px;border-width:5px"></span></h1><p class="lead">Rutas reales, combustible de hoy y cambio de moneda…</p></div>`;
+      await dest.prepare(ctx);
+    }
+    ctx.plan = dest.plan ? dest.plan(ctx) : null;
+    html = `<div class="page" data-section="${sec.id}">${dest.bar ? dest.bar(ctx, sec) : ''}${sec.render(ctx)}${pager(dest, sec)}${footer(dest)}</div>`;
     mount = el => sec.mount?.(el, ctx);
     bgs = sec.bg || dest.meta.backgrounds;
   }
   view.innerHTML = html.startsWith('<div class="page"') ? html : `<div class="page">${html}</div>`;
-  scrollTo({ top: 0, behavior: 'instant' });
-  setBackgrounds(bgs);
-  sfx.page();
+  if (quiet) view.querySelector('.page').style.animation = 'none';
+  else { scrollTo({ top: 0, behavior: 'instant' }); setBackgrounds(bgs); sfx.page(); }
   try { await mount?.(view); } catch (e) { console.error(e); }
-  enhance(view);
+  enhance(view, quiet);
 }
 
 function pager(dest, sec) {
@@ -76,7 +81,7 @@ function pager(dest, sec) {
     ${prev ? `<a class="btn" href="#/${dest.meta.id}/${prev.id}">← ${prev.icon} ${prev.title}</a>` : '<span></span>'}
     ${next ? `<a class="btn primary" href="#/${dest.meta.id}/${next.id}">${next.icon} ${next.title} →</a>` : ''}</div>`;
 }
-const footer = dest => `<div class="foot">${dest.meta.footer || ''}<br>Datos en vivo: Open-Meteo (ECMWF, DWD, NOAA, MeteoSwiss, Météo-France) · SLF · data.economie.gouv.fr · Ministerio para la Transición Ecológica · BCE/Frankfurter · OSRM · OpenStreetMap · Wikimedia Commons.</div>`;
+const footer = dest => `<div class="foot">${dest.meta.footer || ''}</div>`;
 
 function homeHTML() {
   return `<section class="hero" style="min-height:60vh">
@@ -115,6 +120,6 @@ function mountSettings(el) {
 }
 
 document.getElementById('menu-toggle').addEventListener('click', () => document.body.classList.toggle('nav-open'));
-store.onChange(() => route());
+store.onChange(() => route(true));
 addEventListener('hashchange', route);
 startParticles(); initSound(); store.initAuth(); route();
