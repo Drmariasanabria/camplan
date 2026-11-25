@@ -21,6 +21,7 @@ const near = (a, b) => Math.hypot(a[0] - b[0], (a[1] - b[1]) * 0.69) * 111;
 const CUSTOM = new Map();
 export function regionOf(id, place) {
   const R = REGIONS.find(r => r.id === id); if (R) return R;
+  if (place?.area) place = place.area; // el camping elegido conserva la zona buscada
   if (place?.pos) {
     const n = REGIONS.map(r => [r, near(r.pos, place.pos)]).sort((a, b) => a[1] - b[1])[0];
     if (n && n[1] < 12) return n[0];
@@ -69,8 +70,8 @@ export function baseById(id, place) {
   if (id?.startsWith('zone:') || id === 'place') {
     const R = id === 'place' ? regionOf(null, place) : regionOf(id.slice(5), place);
     return { id: `${id}${place ? '|' + place.name : ''}`, key: id, region: R.id, regionObj: R, generic: true,
-      name: place?.name || `Camping por elegir en ${R.short}`, town: R.short, pos: place?.pos || R.camperPos || R.pos, img: IMG.jungfrau, elev: R.elev,
-      pitch: 35, adult: 10, tax: 3, dog: 4, elec: 5, maxDogs: 9, opens: '2026-01-01', status: 'warn', verdict: place ? 'Confirmar invierno y perros' : 'Elige un camping',
+      name: place?.area ? place.name : place?.name && id !== 'place' ? place.name : place?.name ? `Camping por elegir en ${place.name}` : `Camping por elegir en ${R.short}`, town: R.short, pos: place?.pos || R.camperPos || R.pos, img: IMG.jungfrau, elev: R.elev,
+      pitch: 35, adult: 10, tax: 3, dog: 4, elec: 5, maxDogs: 9, opens: '2026-01-01', status: 'warn', verdict: place && (place.area || id !== 'place') ? 'Confirmar invierno y perros' : 'Elige un camping',
       toGrindelwald: '', toInterlaken: '', pros: [place ? 'Elegido por ti' : 'Elige un camping concreto en «Dónde dormir»', R.note].filter(Boolean), cons: [R.camper].filter(Boolean),
       tel: place?.phone || '', mail: place?.email || '', web: place?.web || R.web, estimate: 'Estimación genérica: parcela ≈35 CHF + 10/adulto + tasa + perros + luz' };
   }

@@ -30,7 +30,7 @@ export default {
       <h3 style="font-size:26px">${st.base.verdict === 'Elige un camping' ? `Elige dónde dormir en ${ui.esc(st.base.town)}` : `📍 ${ui.esc(st.base.name)}`}</h3>
       ${st.base.cons[0] ? `<p style="color:var(--warn)">🚐 ${st.base.cons[0]}</p>` : ''}
       <p class="small muted">Campings y áreas de autocaravanas reales en ≈20 km a la redonda (OpenStreetMap). Antes de reservar confirmad por escrito que abren en invierno y aceptan ${c.dogs} perro${c.dogs === 1 ? '' : 's'}.</p>
-      <div id="near-${i}" data-near='${JSON.stringify({ i, pos: st.base.regionObj?.pos || st.base.pos })}'><span class="loader"></span></div>
+      <div id="near-${i}" data-near='${JSON.stringify({ i, pos: st.base.regionObj?.pos || st.base.pos }).replace(/'/g, '&#39;')}'><span class="loader"></span></div>
       <div class="btn-row">${ui.links([['park4night en la zona', `https://park4night.com/en/search?lat=${st.base.pos[0]}&lng=${st.base.pos[1]}&z=11`], ['Campercontact', 'https://www.campercontact.com/en/switzerland'], ['Campings en MySwitzerland', 'https://www.myswitzerland.com/es-es/'], ['Web oficial de la zona', st.base.regionObj?.web || st.base.web]])}</div></div>` : '').join('')}
     ${ui.table(['Camping', 'Pueblo', 'CHF / noche', `Si fueran las ${p.nights} noches`, 'Para vosotros', ''], rows.map(r => [
       `<b>${r.b.name}</b>${inStay(r.b.id).length ? ` <span class="badge ok">En tu plan · ${inStay(r.b.id).reduce((a, st) => a + st.nights, 0)} n</span>` : ''}`, r.b.town, r.np.toFixed(0), ui.eur(r.tot),
@@ -78,7 +78,8 @@ export default {
             · <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(x.t.name)}&query_place_id=" target="_blank">opiniones ↗</a></td>
           <td><button class="btn sm" data-pick="${i}" data-k="${k}">Usar este</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">No hay campings registrados cerca en OpenStreetMap: mirad park4night.</p>';
         box.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => { const x = list[+b.dataset.k], cfg = getCfg(ctx), sts = staysOf(cfg);
-          sts[i].place = { name: x.t.name, pos: x.pos, web: x.t.website || '', phone: x.t.phone || '', email: x.t.email || x.t['contact:email'] || '' };
+          const prev = sts[i].place, area = sts[i].base === 'place' ? (prev?.area || (prev ? { name: prev.name, pos: prev.pos } : null)) : null;
+          sts[i].place = { name: x.t.name, pos: x.pos, web: x.t.website || '', phone: x.t.phone || '', email: x.t.email || x.t['contact:email'] || '', ...(area ? { area } : {}) };
           cfg.stays = sts; ctx.set('cfg', cfg); ctx.toast('Camping elegido para la estancia ' + (i + 1)); ctx.rerender(); });
       } catch { box.innerHTML = 'OpenStreetMap no responde ahora. <button class="btn sm" onclick="location.reload()">↻ Reintentar</button>'; }
     });

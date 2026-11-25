@@ -69,7 +69,12 @@ async function route(quiet = false) {
       let slow = false;
       const prep = dest.prepare(ctx).catch(e => console.warn('prepare', e));
       await Promise.race([prep, new Promise(r => setTimeout(() => { slow = true; r(); }, 12000))]);
-      if (slow) prep.then(() => token === navToken && ctx.rerender()); // al llegar los datos reales, se recalcula
+      if (slow) prep.then(() => { // datos reales listos: se ofrece actualizar sin borrar lo que estés escribiendo
+        if (token !== navToken) return;
+        const pg = view.querySelector('.page'); if (!pg || pg.querySelector('#ready-bar')) return;
+        pg.insertAdjacentHTML('afterbegin', `<div id="ready-bar" class="callout ok" style="display:flex;gap:14px;align-items:center;justify-content:space-between;margin-top:0"><span>✅ Rutas y precios reales listos.</span><button class="btn sm primary">Actualizar cálculos</button></div>`);
+        pg.querySelector('#ready-bar button').onclick = () => ctx.rerender();
+      });
       if (token !== navToken) return; // el usuario ya navegó a otra sección
     }
     try { ctx.plan = dest.plan ? dest.plan(ctx) : null; } catch (e) { console.error(e); ctx.plan = null; }
