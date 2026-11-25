@@ -28,6 +28,11 @@ destinations/suiza/sections/*.js   una sección = un fichero (todas leen el plan
 
 **Añadir otro destino:** copia `destinations/suiza/` a `destinations/<nuevo>/`, cambia `data.js`/secciones y añade una entrada en `registry.js`. El resto de la app no se toca.
 
+## Publicar cambios
+
+Antes de cada commit ejecuta `python3 tools/stamp.py`: marca todos los archivos con una versión nueva
+para que nadie vea una mezcla de archivos viejos y nuevos justo después de publicar.
+
 ## Activar el login con Google (Firebase, gratis)
 
 1. https://console.firebase.google.com → *Add project* (puedes desactivar Analytics).
