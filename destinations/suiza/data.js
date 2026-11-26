@@ -164,6 +164,27 @@ export const BASES = [
     pros: ['22 €/24 h · perros 1 €/día', 'Duchas con agua caliente', '75 plazas, con recepción', 'A ≈400 m del teleférico; Courmayeur cerca'],
     cons: ['La página de Facebook de «Azzurra» anunció su último día de actividad; el registro regional la sigue dando abierta como «Grand Assaly». Llamad antes de ir', 'Precio de luz y tasa no publicados'],
     tel: '+39 333 137 2961', mail: 'areacampergrandassaly@gmail.com', web: 'https://www.lovevda.it/it/banca-dati/22/aree-di-sosta/la-thuile/area-di-sosta-camper-azzurra-localita-villaret/9000935', estimate: '22 € + perros' },
+  // ── Áreas de autocaravanas · zona Chamonix (comprobado 26/11/2026; fuentes en cada ficha)
+  { id: 'leshouches', short: 'Les Houches', kind: 'area', elev: 1000, region: 'chamonix', country: 'FR', cur: 'EUR', name: 'Área gratuita Les Houches (Aire de la Fontaine)', town: 'Les Houches (a 10 min de Chamonix)', pos: [45.9159, 6.7669], img: IMG.montblanc,
+    pitch: 0, adult: 0, tax: 0, dog: 0, elec: 0, maxDogs: 9, opens: '2026-01-01', status: 'warn', verdict: 'Gratis · confirmar uso en invierno',
+    pros: ['Gratis, unas 20 plazas', 'Tranquila, con vistas al Mont Blanc', 'A ≈10 min de Chamonix', 'Ducha: piscina Richard Bozon (6,80 €)'],
+    cons: ['Sin servicios ni electricidad: llegad con agua y batería', 'No consta si se despeja de nieve en invierno: miradlo en park4night antes'],
+    tel: '', mail: '', web: 'https://park4night.com/en/place/128684', estimate: 'Gratis' },
+  { id: 'sallanches', short: 'Sallanches', kind: 'area', elev: 550, region: 'chamonix', country: 'FR', cur: 'EUR', name: 'Área gratuita de Sallanches (Route du Fayet)', town: 'Sallanches (valle, a 25 min de Chamonix)', pos: [45.932, 6.6334], img: IMG.montblanc,
+    pitch: 0, adult: 0, tax: 0, dog: 0, elec: 0, maxDogs: 9, opens: '2026-01-01', status: 'warn', verdict: 'Gratis · solo 3 plazas',
+    pros: ['Aparcar gratis, abierta todo el año', 'Agua y vaciado: 2 €', 'Junto a los súper baratos del valle'],
+    cons: ['Solo 3 plazas', 'Ruido de la carretera según opiniones', 'Más baja (550 m): menos nieve, pero lejos de las pistas'],
+    tel: '', mail: '', web: 'https://www.park4night.com/lieu/22906/sallanches-24-82-route-du-fayet/france/haute-savoie', estimate: 'Gratis + 2 € servicios' },
+  { id: 'chxcarrefour', short: 'Chamonix Carrefour', kind: 'area', noSleep: true, elev: 1035, region: 'chamonix', country: 'FR', cur: 'EUR', name: 'Área de servicios Carrefour (Route Blanche)', town: 'Chamonix', pos: [45.9188, 6.8744], img: IMG.chamonix,
+    pitch: 0, adult: 0, tax: 0, dog: 0, elec: 0, maxDogs: 9, opens: '2026-05-01', status: 'bad', verdict: 'NO se puede dormir',
+    pros: ['Solo agua y vaciado, gratis'],
+    cons: ['Abierta solo del 1/5 al 30/11: cerrada en invierno', 'El folleto de la comuna dice que no se permite estacionar para dormir'],
+    tel: '', mail: '', web: 'https://en.chamonix.com/plan-my-stay/accommodation/camper-van-service-area/motorhome-service-area-in-chamonix', estimate: '—' },
+  { id: 'grepon', short: 'Grépon', kind: 'area', noSleep: true, elev: 1035, region: 'chamonix', country: 'FR', cur: 'EUR', name: 'Parking du Grépon', town: 'Chamonix Sud', pos: [45.9182, 6.8736], img: IMG.chamonix,
+    pitch: 18, adult: 0, tax: 0, dog: 0, elec: 0, maxDogs: 9, opens: '2026-05-01', status: 'bad', verdict: 'Prohibido a autocaravanas en invierno',
+    pros: ['En verano: ≈16–25 €/24 h junto al teleférico'],
+    cons: ['En invierno, prohibido a autocaravanas por riesgo de aludes; gálibo de 2 m'],
+    tel: '+33 4 50 53 65 71', mail: '', web: 'https://my-little-planet.fr/parking-grepon-chamonix/', estimate: '—' },
 ];
 export const DISCARDED = { name: 'Camping Eigernordwand (Grindelwald)', why: 'No admite perros (lo dice su web) y en invierno abre el 18/12.', web: 'https://www.camping-eigernordwand.ch/' };
 

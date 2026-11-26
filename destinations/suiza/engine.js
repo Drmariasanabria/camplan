@@ -82,9 +82,11 @@ export function baseById(id, place) {
     const R = id === 'place' ? regionOf(null, place) : regionOf(id.slice(5), place);
     return { id: `${id}${place ? '|' + place.name : ''}`, key: id, region: R.id, regionObj: R, generic: true, country: R.country || 'CH', cur: R.country && R.country !== 'CH' ? 'EUR' : 'CHF',
       name: place?.area ? place.name : place?.name && id !== 'place' ? place.name : place?.name ? `Camping por elegir en ${place.name}` : `Camping por elegir en ${R.short}`, town: R.short, pos: place?.pos || R.camperPos || R.pos, img: IMG.jungfrau, elev: R.elev,
-      pitch: 35, adult: 10, tax: 3, dog: 4, elec: 5, maxDogs: 9, opens: '2026-01-01', status: 'warn', verdict: place && (place.area || id !== 'place') ? 'Confirmar invierno y perros' : 'Elige un camping',
+      ...(place?.custom ? { pitch: +place.price || 0, adult: 0, tax: 0, dog: 0, elec: 0, kind: place.kind || 'area', custom: true } : { pitch: 35, adult: 10, tax: 3, dog: 4, elec: 5 }),
+      maxDogs: 9, opens: '2026-01-01', status: 'warn', verdict: place?.custom ? (place.price ? `Tu sitio · ${place.price} €/noche` : 'Tu sitio · gratis') : place && (place.area || id !== 'place') ? 'Confirmar invierno y perros' : 'Elige un camping',
       toGrindelwald: '', toInterlaken: '', pros: [place ? 'Elegido por ti' : 'Elige un camping concreto en «Dónde dormir»', R.note].filter(Boolean), cons: [R.camper].filter(Boolean),
-      tel: place?.phone || '', mail: place?.email || '', web: place?.web || R.web, estimate: 'Estimación genérica: parcela ≈35 CHF + 10/adulto + tasa + perros + luz' };
+      tel: place?.phone || '', mail: place?.email || '', web: place?.web || R.web, notes: place?.notes || '',
+      estimate: place?.custom ? (place.price ? `${place.price} €/noche (lo has puesto tú)` : 'Gratis') : 'Estimación genérica: parcela ≈35 CHF + 10/adulto + tasa + perros + luz' };
   }
   return BASES[0];
 }
@@ -215,6 +217,8 @@ export function plan(ctx) {
   stays.forEach(st => {
     if (st.nights < 1) return;
     if (st.checkin < st.base.opens) warn.push({ lvl: 'bad', t: `${st.base.name} abre el ${fmtDate(st.base.opens)} y llegaríais el ${fmtDate(st.checkin)}.` });
+    if (st.base.custom && st.country === 'CH') warn.push({ lvl: 'warn', t: `${st.base.name}: en Suiza (cantón de Berna) solo se puede dormir en campings o áreas autorizadas; multas de 200 a 2.000 CHF. Confirmad que ese sitio lo permite.` });
+    if (st.base.noSleep) warn.push({ lvl: 'bad', t: `${st.base.name}: ${st.base.verdict}. ${st.base.cons.join(' ')}` });
     if (cfg.dogs > st.base.maxDogs) warn.push({ lvl: 'bad', t: `${st.base.name} admite como máximo ${st.base.maxDogs} perro según su tarifa; vais con ${cfg.dogs}.` });
   });
   [...travelOut, ...travelRet].forEach(t => { if (t.over) warn.push({ lvl: 'warn', t: `${fmtDate(t.date)}: jornada de ${t.totalH.toFixed(1)} h al volante (más de tus ${cfg.maxHours} h). Salid muy temprano y turnaos.` });

@@ -38,7 +38,9 @@ function stayCard(ctx, st, idx, total) {
   const days = p.days.filter(d => d.kind === 'base' && d.stay?.i === st.i), acts = activitiesFor(R);
   const optsFor = (d) => acts.map(a => `<option value="${a.id}" ${a.id === d.act ? 'selected' : ''}>${a.name}${a.dogs ? '' : ' · sin perros'}</option>`).join('');
   const sameZone = BASES.filter(x => (x.region === b.region) || countryOf(x) === st.country);
-  const camps = `<optgroup label="Comprobados">${sameZone.map(x => `<option value="${x.id}" ${x.id === b.id ? 'selected' : ''}>${x.name} · ${money(nightPrice(c, x), curOf(x))}</option>`).join('')}</optgroup>
+  const opt = x => `<option value="${x.id}" ${x.id === b.id ? 'selected' : ''}>${x.noSleep ? '⛔ ' : ''}${x.name} · ${x.noSleep ? 'no se puede dormir' : nightPrice(c, x) ? money(nightPrice(c, x), curOf(x)) : 'gratis'}</option>`;
+  const camps = `<optgroup label="⛺ Campings comprobados">${sameZone.filter(x => x.kind !== 'area').map(opt).join('')}</optgroup>
+    ${sameZone.some(x => x.kind === 'area') ? `<optgroup label="🚐 Áreas de autocaravanas">${sameZone.filter(x => x.kind === 'area').map(opt).join('')}</optgroup>` : ''}
     <optgroup label="Otros campings comprobados">${BASES.filter(x => !sameZone.includes(x)).map(x => `<option value="${x.id}">${FLAG[countryOf(x)] || ''} ${x.name}</option>`).join('')}</optgroup>
     <optgroup label="Otra zona de montaña (eliges camping después)">${REGIONS.filter(r => !r.detailed && !BASES.some(x => x.region === r.id)).map(r => `<option value="zone:${r.id}" ${b.key === 'zone:' + r.id ? 'selected' : ''}>${r.name}</option>`).join('')}</optgroup>
     ${b.generic ? `<option value="${b.key}" selected>📍 ${ui.esc(b.name)}</option>` : ''}`;
@@ -49,7 +51,7 @@ function stayCard(ctx, st, idx, total) {
   return `<div class="leg stay"><span class="leg-dot">${idx + 1}</span>
   <div class="stay-card">
     <div class="stay-head" style="background-image:url('${Z?.img || b.img || IMG.eiger}')">
-      <div class="stay-tools">${idx > 0 ? `<button data-mv="${idx}" data-d="-1" title="Subir">↑</button>` : ''}${!last ? `<button data-mv="${idx}" data-d="1" title="Bajar">↓</button>` : ''}${total > 1 ? `<button data-del="${idx}" title="Quitar parada">✕</button>` : ''}</div>
+      <div class="stay-tools"><button data-split="${idx}" title="Dividir: repartir noches entre dos sitios">✂️</button>${idx > 0 ? `<button data-mv="${idx}" data-d="-1" title="Subir">↑</button>` : ''}${!last ? `<button data-mv="${idx}" data-d="1" title="Bajar">↓</button>` : ''}${total > 1 ? `<button data-del="${idx}" title="Quitar parada">✕</button>` : ''}</div>
       <div class="when">${FLAG[st.country] || ''} ${fmtDate(st.checkin)} → ${fmtDate(st.checkout)} · ${st.nights} noche${st.nights === 1 ? '' : 's'}</div>
       <h2>${ui.esc(R.short || short(b))}</h2></div>
     <div class="stay-body">
@@ -70,9 +72,21 @@ function stayCard(ctx, st, idx, total) {
           <div class="small">${(b.pros || []).slice(0, 4).join(' · ')}</div>
           ${(b.cons || []).length ? `<div class="small" style="color:var(--warn)">⚠ ${b.cons.join(' · ')}</div>` : ''}
           <div class="link-list" style="margin-top:8px">${b.mail ? `<a href="${emailFor(p, st)}">✉️ Pedir reserva</a>` : ''}${b.tel ? `<a href="tel:${b.tel.replace(/\s/g, '')}">📞 ${b.tel}</a>` : ''}<a href="https://park4night.com/en/search?lat=${b.pos[0]}&lng=${b.pos[1]}&z=13" target="_blank">Más sitios en park4night</a><button type="button" class="btn sm" data-near="${idx}">📍 Campings reales cerca</button></div>
+          <button type="button" class="btn sm" data-mine="${idx}" style="margin-top:8px">➕ Añadir mi sitio (área, parking…)</button>
+          <div id="mine-${idx}" hidden style="margin-top:10px;padding:14px;border:1px dashed #b8cbe0;border-radius:14px">
+            <div class="form-grid">
+              <label class="field">Nombre<input type="text" data-mf="name" placeholder="Área junto al súper…"></label>
+              <label class="field">Precio por noche (€)<input type="number" data-mf="price" min="0" value="0"><small>0 = gratis</small></label>
+              <label class="field">Enlace (park4night o Google Maps)<input type="text" data-mf="url" placeholder="https://…"></label>
+              <label class="field">Coordenadas (opcional)<input type="text" data-mf="coords" placeholder="45.9159, 6.7669"><small>Se leen solas de un enlace de Google Maps</small></label>
+            </div>
+            <label class="field" style="margin-top:10px">Notas<input type="text" data-mf="notes" placeholder="Sin servicios, llegar con agua…"></label>
+            <div class="btn-row"><button type="button" class="btn primary sm" data-mine-save="${idx}">Usar este sitio</button></div>
+          </div>
+          ${b.notes ? `<p class="small" style="margin-top:8px">📝 ${ui.esc(b.notes)}</p>` : ''}
           <div id="near-${idx}"></div>
           ${b.generic ? '' : `<div class="verified">✓ Comprobado ${CHECKED}</div>`}</div></div>
-        <div class="row"><div class="k">🚿 Ducharse</div><div class="v">${showers.map(item).join('')}</div></div>
+        <div class="row"><div class="k">🚿 Ducharse</div><div class="v">${b.kind === 'area' ? '<p class="small" style="color:var(--warn)">Dormís en un área sin duchas: usad una de estas.</p>' : ''}${showers.filter(x => !(b.kind === 'area' && /camping/i.test(x.name))).map(item).join('')}</div></div>
         <div class="row"><div class="k">🛒 Comprar</div><div class="v">${shops.map(item).join('')}</div></div>
         <div class="row"><div class="k">⛷️ Cada día</div><div class="v"><div class="days-mini">${days.map(d => `<div class="d"><span><b>${fmtDate(d.date)}</b>${d.hol ? `<br><span class="badge ${d.hol.kind === 'closed' ? 'bad' : 'warn'}">${d.hol.name}</span>` : ''}${d.transfer ? '<br><span class="badge info">traslado</span>' : ''}</span>
           <select data-day="${d.date}" data-k="act">${optsFor(d)}</select></div>`).join('') || '<span class="muted small">Solo noche de paso.</span>'}</div>
@@ -255,6 +269,23 @@ export default {
         <p class="small muted" style="margin-top:8px">¿Otro sitio? Usa el buscador de arriba en esta misma ficha (Courmayeur, Cervinia, Annecy, Val Thorens…).</p>`;
       cmp.querySelectorAll('[data-pickzone]').forEach(b => b.onclick = () => saveStays(sts => { sts[lastI] = { base: b.dataset.pickzone, nights: 0, price: 0 }; }));
     }
+    // Dividir una parada (p. ej. 1 noche en área gratis + resto en camping)
+    el.querySelectorAll('[data-split]').forEach(b => b.onclick = () => saveStays(sts => { const i = +b.dataset.split, x = sts[i], n = p.stays[i].nights;
+      if (n < 2) { ctx.toast('Hace falta al menos 2 noches para dividir'); return; }
+      sts.forEach((y, k) => { if (k < sts.length - 1) y.nights = Math.max(1, y.nights || p.stays[k].nights); });
+      const copy = { ...x, place: x.place ? { ...x.place } : null };
+      if (i === sts.length - 1) { x.nights = 1; copy.nights = 0; } else { x.nights = 1; copy.nights = n - 1; }
+      sts.splice(i + 1, 0, copy); sts.at(-1).nights = 0; }));
+    // Añadir mi propio sitio
+    el.querySelectorAll('[data-mine]').forEach(b => b.onclick = () => { const f = el.querySelector('#mine-' + b.dataset.mine); f.hidden = !f.hidden; });
+    el.querySelectorAll('[data-mine-save]').forEach(b => b.onclick = () => {
+      const i = +b.dataset.mineSave, f = el.querySelector('#mine-' + i), v = k => f.querySelector(`[data-mf="${k}"]`).value.trim(), st = p.stays[i];
+      const name = v('name') || 'Mi sitio', url = v('url'), txt = v('coords') + ' ' + url;
+      const m = txt.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || txt.match(/[?&](?:q|ll|query)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/) || txt.match(/(-?\d{1,2}\.\d{3,})\s*,\s*(-?\d{1,3}\.\d{3,})/);
+      const R = st.base.regionObj || regionOf(st.base.region), pos = m ? [+m[1], +m[2]] : (R?.pos || st.base.pos);
+      saveStays(sts => { sts[i].base = 'zone:' + R.id; sts[i].place = { custom: true, kind: 'area', name, price: +v('price') || 0, web: url, notes: v('notes'), pos }; sts[i].price = 0; });
+      if (!m) ctx.toast('Sin coordenadas: lo coloco en el centro de la zona');
+    });
     // Paradas de noche en ruta
     el.querySelectorAll('[data-stop]').forEach(s => s.addEventListener('change', () => { const cfg = getCfg(ctx), k = s.dataset.stop === 'out' ? 'stopsOut' : 'stopsRet', m = { ...(cfg[k] || {}) };
       if (s.value) m[s.dataset.i] = s.value; else delete m[s.dataset.i]; Object.keys(m).forEach(i => +i > +s.dataset.i && delete m[i]); cfg[k] = m; ctx.set('cfg', cfg); ctx.rerender(); }));
