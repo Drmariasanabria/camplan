@@ -20,7 +20,7 @@ export function bar(ctx, sec) {
   const p = ctx.plan; if (!p) return '';
   return `<div class="tripbar">
     <span>📅 <b>${fmtDate(p.cfg.depart)} → ${fmtDate(p.cfg.homeBy)}</b></span><span class="sep"></span>
-    <span>🏔️ <b>${p.nights}</b> noches · ${p.stays.map(st => st.base.town.split(' ')[0]).join(' → ')}</span><span class="sep"></span>
+    <span>🏔️ <b>${p.nights}</b> noches · ${p.stays.map(st => st.base.short || st.base.town.split(' (')[0]).join(' → ')}</span><span class="sep"></span>
     <span>🚐 <b>${Math.round(p.budget.km).toLocaleString('es-ES')}</b> km</span><span class="sep"></span>
     <span>💶 <b>${ctx.ui.eur(p.budget.total)}</b></span>
     ${p.warn.length ? `<span class="badge ${p.warn.some(w => w.lvl === 'bad') ? 'bad' : 'warn'}">⚠ ${p.warn.length} aviso${p.warn.length > 1 ? 's' : ''}</span>` : ''}

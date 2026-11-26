@@ -1,5 +1,5 @@
 import { IMG, BASES, DISCARDED, P } from '../data.js';
-import { fmtDate, nightPrice, getCfg, staysOf } from '../engine.js';
+import { fmtDate, nightPrice, getCfg, staysOf, money, curOf, toEUR, countryOf } from '../engine.js';
 
 const fmtEN = s => new Date(s + 'T12:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 const fmtDE = s => new Date(s + 'T12:00').toLocaleDateString('de-CH', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -19,30 +19,30 @@ export default {
     const { ui, plan: p } = ctx, c = p.cfg, t = ui.term, lang = ctx.get('mailLang', 'en');
     const inStay = id => p.stays.filter(st => st.base.id === id);
     const rows = BASES.map(b => {
-      const mine = inStay(b.id), np = mine[0]?.np || nightPrice(c, b), tot = np * p.nights / p.fx;
+      const mine = inStay(b.id), np = mine[0]?.np || nightPrice(c, b), cur = curOf(b), tot = toEUR(np, cur, p.fx) * p.nights;
       const issues = [b.opens > p.arrive ? `Abre el ${fmtDate(b.opens)}` : null, c.dogs > b.maxDogs ? `Máx. ${b.maxDogs} perro` : null].filter(Boolean);
-      return { b, np, tot, issues };
+      return { b, np, cur, tot, issues };
     });
     const st = ctx.get('campStatus', {});
     return `<p class="kicker">Alojamiento</p><h1 class="title">Dónde dormir <span class="grad-text">en Suiza</span></h1>
-    <p class="lead">Vuestro plan: ${p.stays.map(st => `<b>${st.base.name}</b> ${fmtDate(st.checkin)} → ${fmtDate(st.checkout)} (${st.nights} n)`).join(' · ')}. Precios para <b>${c.adults} adultos y ${c.dogs} perro${c.dogs === 1 ? '' : 's'}</b>; las estancias se cambian en <a href="#/suiza/viaje">Mi viaje</a>. En el cantón de Berna está prohibido dormir fuera de campings y áreas autorizadas (multas de 200 a 2.000 CHF) y los parkings de Grindelwald para autocaravanas son solo de día.</p>
+    <p class="lead">Vuestro plan: ${p.stays.map(st => `<b>${st.base.name}</b> ${fmtDate(st.checkin)} → ${fmtDate(st.checkout)} (${st.nights} n)`).join(' · ')}. Precios para <b>${c.adults} adultos y ${c.dogs} perro${c.dogs === 1 ? '' : 's'}</b>; las estancias se cambian en <a href="#/suiza/viaje">Mi viaje</a>. En Suiza (cantón de Berna) está prohibido dormir fuera de campings y áreas (multas de 200 a 2.000 CHF). En Chamonix, la acampada en parkings está muy controlada; en el Valle de Aosta, las «aree di sosta» son baratas y legales.</p>
     ${p.stays.map((st, i) => st.base.generic ? `<div class="card no-tilt" style="margin-bottom:20px"><span class="tag ${st.base.verdict === 'Elige un camping' ? 'warn' : 'ok'}">Estancia ${i + 1} · ${fmtDate(st.checkin)} → ${fmtDate(st.checkout)} · ${st.nights} noches</span>
       <h3 style="font-size:26px">${st.base.verdict === 'Elige un camping' ? `Elige dónde dormir en ${ui.esc(st.base.town)}` : `📍 ${ui.esc(st.base.name)}`}</h3>
       ${st.base.cons[0] ? `<p style="color:var(--warn)">🚐 ${st.base.cons[0]}</p>` : ''}
       <p class="small muted">Campings y áreas de autocaravanas reales en ≈20 km a la redonda (OpenStreetMap). Antes de reservar confirmad por escrito que abren en invierno y aceptan ${c.dogs} perro${c.dogs === 1 ? '' : 's'}.</p>
       <div id="near-${i}" data-near='${JSON.stringify({ i, pos: st.base.regionObj?.pos || st.base.pos }).replace(/'/g, '&#39;')}'><span class="loader"></span></div>
       <div class="btn-row">${ui.links([['park4night en la zona', `https://park4night.com/en/search?lat=${st.base.pos[0]}&lng=${st.base.pos[1]}&z=11`], ['Campercontact', 'https://www.campercontact.com/en/switzerland'], ['Campings en MySwitzerland', 'https://www.myswitzerland.com/es-es/'], ['Web oficial de la zona', st.base.regionObj?.web || st.base.web]])}</div></div>` : '').join('')}
-    ${ui.table(['Camping', 'Pueblo', 'CHF / noche', `Si fueran las ${p.nights} noches`, 'Para vosotros', ''], rows.map(r => [
-      `<b>${r.b.name}</b>${inStay(r.b.id).length ? ` <span class="badge ok">En tu plan · ${inStay(r.b.id).reduce((a, st) => a + st.nights, 0)} n</span>` : ''}`, r.b.town, r.np.toFixed(0), ui.eur(r.tot),
+    ${ui.table(['Camping', 'Lugar', 'Por noche', `Si fueran las ${p.nights} noches`, 'Para vosotros', ''], rows.map(r => [
+      `<b>${{ FR: '🇫🇷', CH: '🇨🇭', IT: '🇮🇹' }[countryOf(r.b)] || ''} ${r.b.name}</b>${inStay(r.b.id).length ? ` <span class="badge ok">En tu plan · ${inStay(r.b.id).reduce((a, st) => a + st.nights, 0)} n</span>` : ''}`, r.b.town, money(r.np, r.cur), ui.eur(r.tot),
       r.issues.length ? `<span class="badge bad">${r.issues.join(' · ')}</span>` : `<span class="badge ${r.b.status === 'ok' ? 'ok' : 'warn'}">${r.b.verdict}</span>`,
       inStay(r.b.id).length ? '' : `<button class="btn sm" data-base="${r.b.id}">＋ Añadir estancia</button>`]), { num: [2, 3] })}
     <p class="small muted">Precios estimados con las tarifas publicadas (parcela + adultos + tasa turística + perros + luz). Cuando os contesten, poned el precio real de cada estancia en <a href="#/suiza/viaje">Mi viaje</a>.</p>
 
-    <div class="grid g2" style="margin-top:24px">${rows.map(({ b, np, issues }) => `
+    <div class="grid g2" style="margin-top:24px">${rows.map(({ b, np, cur, issues }) => `
       <div class="card photo" style="min-height:560px"><div class="ph" style="background-image:url('${b.img}')"></div><div class="body">
         <span class="tag ${issues.length ? 'bad' : b.status}">${issues.length ? issues.join(' · ') : b.verdict}</span>
-        <h3 style="font-size:28px">${b.name}</h3><p class="muted">${b.town} · a Grindelwald: ${b.toGrindelwald}</p>
-        <p><b>≈${np.toFixed(0)} CHF/noche</b> <span class="small muted">(${b.estimate})</span></p>
+        <h3 style="font-size:28px">${b.name}</h3><p class="muted">${b.town}${b.toGrindelwald ? ` · a Grindelwald: ${b.toGrindelwald}` : ''}</p>
+        <p><b>≈${money(np, cur)}/noche</b> <span class="small muted">(${b.estimate})</span></p>
         <ul class="small" style="padding-left:18px;margin:8px 0">${b.pros.map(x => `<li>${x.replace('tarjeta de huésped', t('tarjeta de huésped')).replace('Tarjeta de huésped', t('tarjeta de huésped', 'Tarjeta de huésped'))}</li>`).join('')}${b.cons.map(x => `<li style="color:var(--warn)">${x}</li>`).join('')}</ul>
         <div class="btn-row" style="margin:8px 0">${b.web ? `<a class="btn sm" href="${b.web}" target="_blank">Web ↗</a>` : ''}<a class="btn sm" href="tel:${b.tel.replace(/\s/g, '')}">📞 ${b.tel}</a>
           <a class="btn sm" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.name + ' ' + b.town)}" target="_blank">⭐ Opiniones Google</a>

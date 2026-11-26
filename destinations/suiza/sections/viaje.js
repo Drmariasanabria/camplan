@@ -1,5 +1,5 @@
 import { IMG, STRATEGIES, BASES, REGIONS } from '../data.js';
-import { fmtDate, fmtLong, hhmm, nightPrice, diffDays, getCfg, staysOf, actById } from '../engine.js';
+import { fmtDate, fmtLong, hhmm, nightPrice, diffDays, getCfg, staysOf, actById, money, curOf, countryOf } from '../engine.js';
 import { bindCfg, warnList } from '../common.js';
 import { openRoadbook } from '../roadbook.js';
 
@@ -41,8 +41,8 @@ export default {
     <div class="grid g4">
       <div class="stat"><div class="l">Salida</div><div class="v">${fmtDate(c.depart)}</div><div class="l">${c.departTime} desde ${ui.esc(c.origin.name)}</div></div>
       <div class="stat"><div class="l">Llegada al camping</div><div class="v">${fmtDate(p.arrive)}</div><div class="l">≈${hhmm(p.travelOut.at(-1)?.arrival || 0)} · ${p.travelOut.length} día${p.travelOut.length > 1 ? 's' : ''} de carretera</div></div>
-      <div class="stat"><div class="l">En Suiza</div><div class="v">${p.nights} noches</div><div class="l">${p.stays.map(st => `${ui.esc(st.base.town)} ${st.nights} n`).join(' → ')}</div></div>
-      <div class="stat"><div class="l">Salida de Suiza</div><div class="v">${fmtDate(p.leave)}</div><div class="l">En casa el ${fmtDate(p.homeArrive)}${c.bufferDay ? ` · colchón el ${fmtDate(c.homeBy)}` : ''}</div></div>
+      <div class="stat"><div class="l">En destino</div><div class="v">${p.nights} noches</div><div class="l">${p.stays.map(st => `${ui.esc(st.base.short || st.base.town)} ${st.nights} n`).join(' → ')}</div></div>
+      <div class="stat"><div class="l">Empezáis la vuelta</div><div class="v">${fmtDate(p.leave)}</div><div class="l">En casa el ${fmtDate(p.homeArrive)}${c.bufferDay ? ` · colchón el ${fmtDate(c.homeBy)}` : ''}</div></div>
       <div class="stat"><div class="l">Kilómetros</div><div class="v">${Math.round(p.budget.km).toLocaleString('es-ES')}</div><div class="l">${p.approx ? 'estimados (cargando rutas reales)' : 'calculados sobre la ruta real'}</div></div>
       <div class="stat"><div class="l">Horas al volante</div><div class="v">${Math.round(driveOut + driveRet)} h</div><div class="l">ida ${driveOut.toFixed(1)} h · vuelta ${driveRet.toFixed(1)} h (con pausas)</div></div>
       <div class="stat"><div class="l">Presupuesto</div><div class="v grad-text">${ui.eur(p.budget.total)}</div><div class="l">${ui.eur(p.budget.total / Math.max(1, c.adults))} por persona · <a href="#/suiza/presupuesto">desglose</a></div></div>
@@ -51,7 +51,7 @@ export default {
 
     <div style="display:flex;gap:6px;margin:22px 0 8px">
       ${seg(p.travelOut.length, 'rgba(94,231,255,.25)', `🚐 Ida · ${p.travelOut.length} d`)}
-      ${seg(p.nights - 1, 'rgba(62,230,161,.22)', `🏔️ Suiza · ${p.nights} noches`)}
+      ${p.stays.map((st, i) => seg(Math.max(1, st.nights), ['rgba(62,230,161,.22)', 'rgba(124,92,255,.25)', 'rgba(255,198,92,.22)', 'rgba(94,231,255,.2)'][i % 4], `${{ FR: '🇫🇷', CH: '🇨🇭', IT: '🇮🇹' }[st.country] || '🏔️'} ${st.base.short || st.base.town} · ${st.nights} n`)).join('')}
       ${seg(p.travelRet.length, 'rgba(255,94,168,.22)', `🚐 Vuelta · ${p.travelRet.length} d`)}
       ${seg(c.bufferDay ? 1 : 0, 'rgba(255,255,255,.08)', 'Colchón')}
     </div>
@@ -92,21 +92,23 @@ export default {
     <fieldset><legend>🛣️ Ruta</legend>
       <div class="grid g3" style="margin-bottom:18px">${Object.entries(STRATEGIES).map(([k, s]) => `<div class="card no-tilt" style="padding:18px"><span class="tag" style="color:${s.color}">${s.name}</span><p class="small">${s.what.replace('RCEA', t('RCEA')).replace('A79', t('A79'))}</p><p class="small" style="color:var(--ok)">✓ ${s.pros.join(' · ')}</p><p class="small" style="color:var(--warn)">✗ ${s.cons.join(' · ')}</p></div>`).join('')}</div>
       <div class="form-grid">
-      ${ui.sel('outStrategy', 'Ruta de ida', c.outStrategy, Object.entries(STRATEGIES).map(([k, s]) => [k, s.name]))}
-      ${ui.sel('retStrategy', 'Ruta de vuelta', c.retStrategy, Object.entries(STRATEGIES).map(([k, s]) => [k, s.name]), 'Ida tranquila por la mixta y vuelta por autopista es buen equilibrio')}
-      </div><p class="small muted" style="margin-top:12px">Las paradas de cada noche se eligen solas según tus horas máximas. Puedes fijarlas a mano en <a href="#/suiza/ruta">Ruta</a>.</p></fieldset>
+      ${ui.sel('outStrategy', 'Ruta de ida', c.outStrategy, Object.entries(STRATEGIES).filter(([, s]) => !s.onlyRet).map(([k, s]) => [k, s.name]))}
+      ${ui.sel('retStrategy', 'Ruta de vuelta', c.retStrategy, Object.entries(STRATEGIES).map(([k, s]) => [k, s.name]), countryOf(p.endBase) === 'IT' ? 'Saliendo de Italia: por Montgenèvre (sin túneles) o por el túnel del Mont Blanc' : 'Ida tranquila por la mixta y vuelta por autopista es buen equilibrio')}
+      </div><div class="btn-row">${ui.tog('vignette', 'Comprar viñeta suiza (40 CHF) para usar autopistas en Suiza', c.vignette !== false)}</div>
+      <p class="small muted">${c.vignette !== false ? 'Con viñeta podéis usar autopistas suizas.' : `Sin viñeta: por Suiza solo carreteras cantonales; entre el Valais e Interlaken, el ${t('Lötschberg', 'tren del Lötschberg')}. Ojo: la autopista Martigny–Sion sí la exige.`}</p>
+      <p class="small muted" style="margin-top:12px">Las paradas de cada noche se eligen solas según tus horas máximas. Puedes fijarlas a mano en <a href="#/suiza/ruta">Ruta</a>.</p></fieldset>
 
     <fieldset><legend>🏕️ Dónde dormís en Suiza</legend>
       <p class="small muted" style="margin-top:0">Divide la estancia en tantas paradas como queráis. La última se queda con las noches que sobren. Entre una y otra se añade un día de traslado.</p>
       ${p.stays.map((st, i) => `<div class="form-grid" style="align-items:end;padding:14px 0;border-top:${i ? '1px solid var(--line)' : '0'}">
         <label class="field">Estancia ${i + 1} · ${fmtDate(st.checkin)} → ${fmtDate(st.checkout)}<select data-stay="${i}" data-k="base">
-          <optgroup label="Jungfrau · campings revisados">${BASES.map(b => `<option value="${b.id}" ${b.id === st.base.id ? 'selected' : ''}>${b.name} (${b.town}) · ≈${nightPrice(c, b).toFixed(0)} CHF/noche</option>`).join('')}</optgroup>
-          <optgroup label="Otras zonas de montaña">${REGIONS.filter(r => !r.detailed).map(r => `<option value="zone:${r.id}" ${st.base.key === 'zone:' + r.id ? 'selected' : ''}>${r.name} · ${r.canton}</option>`).join('')}</optgroup>
+          ${[['FR', '🇫🇷 Francia · campings comprobados'], ['CH', '🇨🇭 Suiza · campings comprobados'], ['IT', '🇮🇹 Italia · áreas comprobadas']].map(([cc, lab]) => `<optgroup label="${lab}">${BASES.filter(b => countryOf(b) === cc).map(b => `<option value="${b.id}" ${b.id === st.base.id ? 'selected' : ''}>${b.name} (${b.town}) · ≈${money(nightPrice(c, b), curOf(b))}/noche</option>`).join('')}</optgroup>`).join('')}
+          <optgroup label="Otras zonas de montaña (camping por elegir)">${REGIONS.filter(r => !r.detailed).map(r => `<option value="zone:${r.id}" ${st.base.key === 'zone:' + r.id ? 'selected' : ''}>${r.name} · ${r.canton}</option>`).join('')}</optgroup>
           ${st.base.key === 'place' ? `<option value="place" selected>📍 ${ui.esc(st.base.name)}</option>` : ''}
         </select>${st.base.generic ? `<small>${st.base.verdict === 'Elige un camping' ? '⚠ Elige el camping concreto en «Dónde dormir»' : '📍 ' + ui.esc(st.base.name)}${st.base.cons[0] ? ` · 🚗 ${st.base.cons[0]}` : ''}</small>` : ''}</label>
         <label class="field">Noches${i === p.stays.length - 1 ? ' (las que quedan)' : ''}<input type="number" min="1" max="30" data-stay="${i}" data-k="nights" value="${st.nights}" ${i === p.stays.length - 1 ? 'disabled' : ''}></label>
-        <label class="field">Precio real por noche (CHF)<input type="number" min="0" max="400" data-stay="${i}" data-k="price" value="${st.price}"><small>0 = estimado (${st.np.toFixed(0)} CHF)</small></label>
-        <div>${p.stays.length > 1 ? `<button type="button" class="btn sm" data-stay-del="${i}">✕ Quitar</button>` : ''}${st.transfer ? `<p class="small muted" style="margin:6px 0 0">🚐 Traslado desde ${st.transfer.from.town}: ${Math.round(st.transfer.km)} km</p>` : ''}</div>
+        <label class="field">Precio real por noche (${st.cur === 'EUR' ? '€' : 'CHF'})<input type="number" min="0" max="400" data-stay="${i}" data-k="price" value="${st.price}"><small>0 = estimado (${money(st.np, st.cur)})</small></label>
+        <div>${p.stays.length > 1 ? `<button type="button" class="btn sm" data-stay-del="${i}">✕ Quitar</button>` : ''}${st.transfer ? `<p class="small muted" style="margin:6px 0 0">🚐 Traslado desde ${st.transfer.from.town}: ${Math.round(st.transfer.km)} km${st.transfer.crossings.length ? ' · ' + st.transfer.crossings.map(x => x.name.split(' (')[0] + ' ' + x.label).join(' + ') : ''}</p>` : ''}</div>
       </div>`).join('')}
       <div class="form-grid" style="margin-top:10px"><label class="field">¿Otro lugar que no está en la lista?<input type="text" id="place-q" placeholder="Pueblo o valle de Suiza, p. ej. Arolla"></label><div style="display:flex;align-items:flex-end"><button type="button" class="btn" id="place-go">🔎 Buscar y añadir</button></div></div>
       <div id="place-res" class="link-list" style="margin-top:10px"></div>

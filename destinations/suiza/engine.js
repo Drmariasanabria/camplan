@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════
 //  MOTOR: convierte tu configuración en etapas, itinerario, plazos y costes.
 // ═══════════════════════════════════════════════════════════════════
-import { DEFAULT_CFG, P, IMG, STRATEGIES, STOPS, BASES, LIFTS, HIGH_SEASON, SKIPASS, HOLIDAYS, ACTIVITIES, PREP, REGIONS, GENERIC_SEASON,
+import { DEFAULT_CFG, P, IMG, STRATEGIES, STOPS, BASES, LIFTS, HIGH_SEASON, SKIPASS, HOLIDAYS, ACTIVITIES, PREP, REGIONS, GENERIC_SEASON, CROSSINGS,
   WINTER_PASS_CHF, SLED_CHF, SITTER_CHF_H, VIGNETTE_CHF, CRITAIR_EUR, CCP_CARD_EUR } from './data.js';
 
 /* ─────────── Fechas ─────────── */
@@ -65,11 +65,14 @@ function leg(a, b) {
   if (LEGS[k]) return LEGS[k];
   const km = hav(a, b) * 1.25; return { km, h: km / 88, coords: [[a[1], a[0]], [b[1], b[0]]], approx: true };
 }
+export const countryOf = b => b.country || regionOf(b.region)?.country || 'CH';
+export const sideOf = b => b.side || regionOf(b.region)?.side || (countryOf(b) === 'CH' ? 'other' : 'valais');
+export const curOf = b => b.cur || (countryOf(b) === 'CH' ? 'CHF' : 'EUR');
 export function baseById(id, place) {
   const b = BASES.find(x => x.id === id); if (b) return b;
   if (id?.startsWith('zone:') || id === 'place') {
     const R = id === 'place' ? regionOf(null, place) : regionOf(id.slice(5), place);
-    return { id: `${id}${place ? '|' + place.name : ''}`, key: id, region: R.id, regionObj: R, generic: true,
+    return { id: `${id}${place ? '|' + place.name : ''}`, key: id, region: R.id, regionObj: R, generic: true, country: R.country || 'CH', cur: R.country && R.country !== 'CH' ? 'EUR' : 'CHF',
       name: place?.area ? place.name : place?.name && id !== 'place' ? place.name : place?.name ? `Camping por elegir en ${place.name}` : `Camping por elegir en ${R.short}`, town: R.short, pos: place?.pos || R.camperPos || R.pos, img: IMG.jungfrau, elev: R.elev,
       pitch: 35, adult: 10, tax: 3, dog: 4, elec: 5, maxDogs: 9, opens: '2026-01-01', status: 'warn', verdict: place && (place.area || id !== 'place') ? 'Confirmar invierno y perros' : 'Elige un camping',
       toGrindelwald: '', toInterlaken: '', pros: [place ? 'Elegido por ti' : 'Elige un camping concreto en «Dónde dormir»', R.note].filter(Boolean), cons: [R.camper].filter(Boolean),
@@ -90,7 +93,7 @@ export async function prepare(ctx) {
   const cfg = getCfg(ctx), live = ctx.live;
   const pairs = new Map();
   for (const [s, dir] of [[cfg.outStrategy, 'out'], [cfg.retStrategy, 'ret']]) {
-    const ch = STRATEGIES[s].chain.map(k => posOf(k, cfg, dir));
+    const ch = chainFor(s, cfg, dir).map(k => posOf(k, cfg, dir));
     for (let i = 0; i < ch.length - 1; i++) pairs.set(key(ch[i], ch[i + 1]), [ch[i], ch[i + 1]]);
   }
   const sb = staysOf(cfg).map(x => baseById(x.base, x.place).pos);
@@ -122,8 +125,12 @@ async function loadFuel(live, type) {
 export const liveData = () => LIVE;
 
 /* ─────────── Perfil de una ruta ─────────── */
+function chainFor(stratKey, cfg, dir) {
+  const b = dir === 'ret' ? lastBase(cfg) : baseOf(cfg);
+  return STRATEGIES[stratKey].chain.filter(k => !(k === 'bardonnex' && countryOf(b) !== 'CH'));
+}
 function profile(stratKey, cfg, dir = 'out') {
-  const st = STRATEGIES[stratKey], keys = st.chain, pts = keys.map(k => posOf(k, cfg, dir));
+  const st = STRATEGIES[stratKey], keys = chainFor(stratKey, cfg, dir), pts = keys.map(k => posOf(k, cfg, dir));
   let km = 0, h = 0; const out = [{ k: keys[0], pos: pts[0], km: 0, h: 0 }], geo = [];
   for (let i = 0; i < pts.length - 1; i++) {
     const l = leg(pts[i], pts[i + 1]); km += l.km; h += l.h * st.vanFactor; geo.push(...l.coords);
@@ -136,7 +143,7 @@ function profile(stratKey, cfg, dir = 'out') {
 /* Reparte la ruta en jornadas según horas máximas y paradas elegidas */
 function splitDays(stratKey, cfg, dir, manual) {
   const pr = profile(stratKey, cfg, dir), total = pr.h, maxH = cfg.maxHours / 1.12; // 1.12 = pausas perros cada 2 h
-  const cands = STOPS.filter(s => s.strat.includes(stratKey)).map(s => {
+  const cands = STOPS.filter(s => s.strat.includes(stratKey) && pr.pts.some(x => x.k === s.at)).map(s => {
     const p = pr.pts.find(x => x.k === s.at), extraH = s.detourKm / 70;
     const fromStart = dir === 'out' ? p.h : total - p.h, kmFromStart = dir === 'out' ? p.km : pr.km - p.km;
     return { ...s, hFrom: fromStart + extraH, kmFrom: kmFromStart + s.detourKm };
@@ -182,11 +189,15 @@ export function plan(ctx) {
   let cur = arrive;
   const stays = raw.map((x, i) => {
     const b = baseById(x.base, x.place), n = i < raw.length - 1 ? Math.max(1, x.nights) : nights - fixed;
-    const st = { i, base: b, nights: n, price: x.price, np: nightPrice(cfg, b, x.price), checkin: cur, checkout: addDays(cur, Math.max(0, n)) };
+    const st = { i, base: b, nights: n, price: x.price, np: nightPrice(cfg, b, x.price), cur: curOf(b), country: countryOf(b), checkin: cur, checkout: addDays(cur, Math.max(0, n)) };
+    st.npEUR = toEUR(st.np, st.cur, LIVE.fx || 0.93);
+    if (i > 0) { const pb = baseById(raw[i - 1].base, raw[i - 1].place), l = leg(pb.pos, b.pos); st.transfer = { from: pb, km: l.km, h: l.h * 1.12, crossings: crossingCosts(pb, b, cur, LIVE.fx || 0.93) }; }
     cur = st.checkout;
-    if (i > 0) { const pb = baseById(raw[i - 1].base, raw[i - 1].place), l = leg(pb.pos, b.pos); st.transfer = { from: pb, km: l.km, h: l.h * 1.12 }; }
     return st;
   });
+  const lastC = countryOf(endBase);
+  if (STRATEGIES[cfg.retStrategy]?.needs === 'IT' && lastC !== 'IT') warn.push({ lvl: 'warn', t: `La vuelta «${STRATEGIES[cfg.retStrategy].short}» está pensada para salir desde Italia, pero la última estancia es ${endBase.town}. Cambia la ruta de vuelta en Mi viaje.` });
+  if (STRATEGIES[cfg.outStrategy]?.onlyRet) warn.push({ lvl: 'warn', t: 'Esa ruta es solo para la vuelta: elige otra para la ida.' });
   if (raw.length > 1 && stays.at(-1).nights < 1) warn.push({ lvl: 'bad', t: `Las estancias suman ${fixed} noches pero solo hay ${nights}. Quita noches a alguna estancia o amplía el viaje.` });
   stays.forEach(st => {
     if (st.nights < 1) return;
@@ -208,7 +219,7 @@ export function plan(ctx) {
   // El plan automático se reparte dentro de cada zona (las actividades dependen de la región)
   const baseDays = days.filter(x => x.kind === 'base'); baseDays.forEach(x => x.__totalBase = baseDays.length);
   [...new Set(baseDays.map(x => x.stay.base.region))].forEach(reg => { const ds = baseDays.filter(x => x.stay.base.region === reg); autoPlan(ds, cfg, ds[0].stay.base.regionObj || regionOf(reg)); });
-  baseDays.filter(x => x.transfer).forEach(x => { if (!x.act || actById(x.act)?.type === 'ski') { x.act = 'rest'; } x.auto = `Traslado ${x.transfer.from.name} → ${x.stay.base.name} (${Math.round(x.transfer.km)} km, ≈${x.transfer.h.toFixed(1)} h) y plan corto.`; });
+  baseDays.filter(x => x.transfer).forEach(x => { if (!x.act || actById(x.act)?.type === 'ski') { x.act = 'rest'; } x.auto = `Traslado ${x.transfer.from.name} → ${x.stay.base.name} (${Math.round(x.transfer.km)} km, ≈${x.transfer.h.toFixed(1)} h)${x.transfer.crossings.length ? ' por ' + x.transfer.crossings.map(c => `${c.name.split(' (')[0]} (${c.label})`).join(' y ') : ''}. Llegada con luz y plan corto.`; });
   days.forEach(x => { const o = overrides[x.date]; if (o && x.kind === 'base') { if (o.act) x.act = o.act; if (o.alt !== undefined) x.alt = o.alt; if (o.note) x.note = o.note; x.edited = true; } });
   days.forEach(x => { if (x.act) { const a = actById(x.act); if (a?.lift && !liftOpen(a.lift, x.date)) x.liftWarn = `${LIFT(a.lift).name}: temporada desde el ${fmtDate(LIFT(a.lift).from)}`; } });
 
@@ -260,9 +271,27 @@ function autoPlan(baseDays, cfg, R) {
 }
 
 /* ─────────── Costes ─────────── */
+/* Precio por noche en la moneda del camping (CHF o EUR) */
 export function nightPrice(cfg, base = baseOf(cfg), override = 0) {
   if (override > 0) return override;
-  return base.pitch + cfg.adults * (base.adult + base.tax) + cfg.dogs * base.dog + base.elec;
+  const extra = base.incl ? Math.max(0, cfg.adults - base.incl) * (base.extraAdult || 0) : cfg.adults * (base.adult || 0);
+  const dogs = Math.max(0, cfg.dogs - (base.dogFree || 0)) * (base.dog || 0);
+  return base.pitch + extra + cfg.adults * (base.tax || 0) + (base.vehicleTax || 0) + dogs + (base.elec || 0);
+}
+export const toEUR = (v, cur, fx) => cur === 'EUR' ? v : v / fx;
+export const money = (v, cur) => `${Math.round(v)} ${cur === 'EUR' ? '€' : 'CHF'}`;
+
+/* Costes de los pasos entre dos zonas (trenes y túneles) */
+export function crossingCosts(from, to, date, fx) {
+  const out = [], cf = countryOf(from), ct = countryOf(to), sf = sideOf(from), sto = sideOf(to);
+  const wkend = [0, 5, 6].includes(D(date).getDay()) || HOLIDAYS[date]?.kind === 'closed';
+  if ((sf === 'bern') !== (sto === 'bern') && (sf === 'bern' || sto === 'bern') && [sf, sto].includes('valais')) {
+    const chf = wkend ? CROSSINGS.loetschberg.chfWeekend : CROSSINGS.loetschberg.chfWeek;
+    out.push({ ...CROSSINGS.loetschberg, eur: chf / fx, label: `${chf} CHF (${wkend ? 'vie–dom/festivo' : 'lun–jue'})` });
+  }
+  if ((cf === 'CH' && ct === 'IT') || (cf === 'IT' && ct === 'CH')) out.push({ ...CROSSINGS.gsb, label: '33,50 €' });
+  if ((cf === 'FR' && ct === 'IT') || (cf === 'IT' && ct === 'FR')) { const e = cf === 'FR' ? CROSSINGS.montblanc.eurFrIt : CROSSINGS.montblanc.eurItFr; out.push({ ...CROSSINGS.montblanc, eur: e, label: `${String(e).replace('.', ',')} €` }); }
+  return out;
 }
 export function skipassCHF(days, skiDates) {
   if (!days) return 0;
@@ -278,20 +307,24 @@ function costs(cfg, p) {
   const tolls = (c2 ? STRATEGIES[cfg.outStrategy].tollsC2 : STRATEGIES[cfg.outStrategy].tollsC1) + (c2 ? STRATEGIES[cfg.retStrategy].tollsC2 : STRATEGIES[cfg.retStrategy].tollsC1);
   const stops = [...p.travelOut, ...p.travelRet].filter(t => t.stop);
   const frNights = stops.reduce((a, t) => a + t.stop.price, 0) + (stops.some(t => t.stop.card) ? CCP_CARD_EUR : 0);
-  const camp = p.stays.reduce((a, st) => a + Math.max(0, st.nights) * st.np, 0) / fx;
+  const camp = p.stays.reduce((a, st) => a + Math.max(0, st.nights) * toEUR(st.np, st.cur, fx), 0);
+  const crosses = p.stays.flatMap(st => st.transfer?.crossings || []);
+  const crossEUR = crosses.reduce((a, x) => a + x.eur, 0);
+  const inCH = p.stays.some(st => st.country === 'CH');
   const trKm = p.stays.reduce((a, st) => a + (st.transfer?.km || 0), 0);
   const totalDays = diffDays(cfg.depart, cfg.homeBy) + 1;
   const food = cfg.foodPerDay * totalDays + cfg.eatOutMeals * 30 / fx;
   const jfDays = p.skiDates.length && p.skiOther ? p.skiDates.length : (p.skiOther ? 0 : cfg.skiDays);
   const ski = cfg.interests.ski ? (cfg.skiers * (skipassCHF(jfDays, p.skiDates) + p.skiOther * (cfg.skiDayOther || 80)) + cfg.halfDays * cfg.skiers * 65) / fx : 0;
   const pass = cfg.winterPassDays * WINTER_PASS_CHF / fx, sled = cfg.sledRides * SLED_CHF / fx, sitter = cfg.sitterHours * SITTER_CHF_H / fx;
-  const laundry = cfg.laundryLoads * 10 / fx, vign = VIGNETTE_CHF / fx + CRITAIR_EUR;
+  const laundry = cfg.laundryLoads * 10 / fx, vign = (inCH && cfg.vignette !== false ? VIGNETTE_CHF / fx : 0) + CRITAIR_EUR;
   const items = [
     { k: 'fuel', l: 'Combustible', v: fuel, n: `${Math.round(esKm + frKm + chKm).toLocaleString('es-ES')} km · ${Math.round(L(esKm + frKm + chKm))} l · España ${pES.toFixed(3)} €/l, Francia ${pFR.toFixed(3)} €/l` },
-    { k: 'tolls', l: 'Peajes España + Francia', v: tolls, n: `Ida ${STRATEGIES[cfg.outStrategy].short}, vuelta ${STRATEGIES[cfg.retStrategy].short} · clase ${c2 ? 2 : 1} (altura ${cfg.van.height} m)` },
-    { k: 'vign', l: "Viñeta suiza + Crit'Air", v: vign, n: '40 CHF + ≈5 €' },
+    { k: 'tolls', l: 'Peajes de ida y vuelta', v: tolls, n: `Ida ${STRATEGIES[cfg.outStrategy].short}, vuelta ${STRATEGIES[cfg.retStrategy].short} · clase ${c2 ? 2 : 1} (altura ${cfg.van.height} m)${STRATEGIES[cfg.retStrategy].tunnel ? ` · incluye ${STRATEGIES[cfg.retStrategy].tunnel.name} ${STRATEGIES[cfg.retStrategy].tunnel.eur} €` : ''}${STRATEGIES[cfg.retStrategy].estTolls ? ' · peajes italianos y del sur de Francia estimados' : ''}` },
+    { k: 'vign', l: inCH && cfg.vignette !== false ? "Viñeta suiza + Crit'Air" : "Crit'Air (sin viñeta suiza)", v: vign, n: inCH && cfg.vignette !== false ? '40 CHF + ≈5 €' : 'Por Suiza sin autopistas: carreteras cantonales y tren del Lötschberg' },
+    { k: 'cross', l: 'Trenes y túneles entre zonas', v: crossEUR, n: crosses.map(x => `${x.name.split(' (')[0]}: ${x.label}`).join(' · ') || 'Ninguno' },
     { k: 'fr', l: 'Paradas en Francia', v: frNights, n: `${stops.length} noches${stops.some(t => t.stop.card) ? ' + tarjeta Camping-Car Park 5 €' : ''}` },
-    { k: 'camp', l: p.stays.length > 1 ? `Campings en Suiza (${p.stays.length} estancias)` : `Camping ${p.base.name}`, v: camp, n: p.stays.map(st => `${st.base.name}: ${st.nights} n × ${st.np.toFixed(0)} CHF${st.price ? ' (tu precio)' : ''}`).join(' · ') + ` · ${cfg.adults} adultos, ${cfg.dogs} perros` },
+    { k: 'camp', l: p.stays.length > 1 ? `Alojamiento (${p.stays.length} estancias)` : `Camping ${p.base.name}`, v: camp, n: p.stays.map(st => `${st.base.name}: ${st.nights} n × ${money(st.np, st.cur)}${st.price ? ' (tu precio)' : ''}`).join(' · ') + ` · ${cfg.adults} adultos, ${cfg.dogs} perros` },
     { k: 'food', l: 'Comida y compra', v: food, n: `${cfg.foodPerDay} €/día × ${totalDays} días${cfg.eatOutMeals ? ` + ${cfg.eatOutMeals} comidas fuera` : ''}` },
     { k: 'ski', l: 'Forfaits de esquí', v: ski, n: cfg.interests.ski ? `${cfg.skiers} esquiador(es) · ${jfDays ? `Jungfrau ${jfDays} días (${p.skiDates.some(isHigh) ? 'alta' : 'baja'})` : ''}${jfDays && p.skiOther ? ' + ' : ''}${p.skiOther ? `otras zonas ${p.skiOther} días × ${cfg.skiDayOther} CHF` : ''}${cfg.halfDays ? ` + ${cfg.halfDays} medios días` : ''}` : 'Sin esquí' },
     { k: 'pass', l: 'Pase invernal (no esquiadores)', v: pass, n: `${cfg.winterPassDays} días-persona × 61 CHF` },

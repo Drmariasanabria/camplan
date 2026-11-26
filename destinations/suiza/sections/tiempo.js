@@ -43,6 +43,8 @@ export default {
     <h2>Peligro de aludes <span class="grad-text">hoy</span></h2>
     <p>Boletín oficial del ${ui.term('SLF')} para las zonas donde dormís (${p.stays.map(st => ui.esc(st.base.town)).join(', ')}). Escala de 1 a 5; desde el <b>3 (notable)</b> el terreno fuera de pistas ya es peligroso.</p>
     <div class="grid g2" id="slf"><div class="card"><span class="loader"></span></div></div>
+    ${p.stays.some(st => st.country === 'FR') ? `<div class="callout"><h3>🇫🇷 Aludes en Chamonix</h3><p>El boletín suizo no cubre Francia. Usad el BRA (boletín de riesgo de aludes) de Météo-France para el macizo del Mont Blanc.</p>${ui.links([['Météo-France montaña', 'https://meteofrance.com/meteo-montagne'], ['Chamonix: tiempo y nieve', 'https://www.chamonix.com/']])}</div>` : ''}
+    ${p.stays.some(st => st.country === 'IT') ? `<div class="callout"><h3>🇮🇹 Aludes en el Valle de Aosta</h3><p>Boletín regional de nieve y aludes del Valle de Aosta y boletines AINEVA de los Alpes italianos.</p>${ui.links([['AINEVA boletines', 'https://bollettini.aineva.it/'], ['Valle de Aosta: tiempo', 'https://www.regione.vda.it/'], ['Monte Rosa: pistas abiertas', 'https://www.monterosaski.com/']])}</div>` : ''}
 
     <h2>Antes de subir, <span class="grad-text">mira esto</span></h2>
     <div class="grid g3">

@@ -10,7 +10,9 @@ export default {
   bg: [IMG.thun, IMG.interlaken],
   render(ctx) {
     const { ui, plan: p } = ctx, c = p.cfg, b = p.budget;
-    const scen = [['A', 'A', 'Autopista ida y vuelta'], ['B', 'B', 'Mixta ida y vuelta'], ['B', 'A', 'Mixta ida, autopista vuelta']].map(([o, r, l]) => {
+    const fromIT = p.stays.at(-1)?.country === 'IT';
+    const scen = (fromIT ? [['A', 'IT', 'Autopista ida · vuelta por Montgenèvre'], ['A', 'MB', 'Autopista ida · vuelta por el túnel del Mont Blanc'], ['B', 'IT', 'Mixta ida · vuelta por Montgenèvre']]
+      : [['A', 'A', 'Autopista ida y vuelta'], ['B', 'B', 'Mixta ida y vuelta'], ['B', 'A', 'Mixta ida, autopista vuelta']]).map(([o, r, l]) => {
       const q = alt(ctx, { outStrategy: o, retStrategy: r, stopsOut: {}, stopsRet: {} });
       return { l, q, cur: o === c.outStrategy && r === c.retStrategy };
     });
