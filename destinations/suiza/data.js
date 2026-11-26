@@ -269,8 +269,8 @@ export const INFO = {
 /* ─────────────── Tareas de preparación (plazo relativo a la salida) ─────────────── */
 // daysBefore: cuántos días antes de salir, como tarde · notBefore: fecha mínima
 export const PREP = [
-  { id: 'camping', days: 25, cat: 'Reservas', t: 'Pedir disponibilidad y precio total por escrito al camping base (perros, luz, grises en invierno)', go: 'dormir' },
-  { id: 'alt', days: 25, cat: 'Reservas', t: 'Consultar alternativa (Gletscherdorf) por si el primero no confirma' , go: 'dormir'},
+  { id: 'camping', days: 25, cat: 'Reservas', t: 'Pedir disponibilidad y precio total por escrito a cada camping (perros, luz, grises en invierno)', go: 'dormir' },
+  { id: 'alt', days: 25, cat: 'Reservas', t: 'Tener una alternativa en cada zona por si alguno no confirma (en «Dónde dormir» hay varias)' , go: 'dormir'},
   { id: 'critair', days: 21, cat: 'Vehículo', t: "Pedir la pegatina Crit'Air (tarda en llegar a España)", term: "Crit'Air" },
   { id: 'dogs', days: 21, cat: 'Perros', t: 'Revisar pasaportes de los perros: chip legible y antirrábica en vigor', term: 'BLV' },
   { id: 'insurance', days: 20, cat: 'Seguros', t: 'Seguro de montaña con Europa para los dos (licencia o seguro de viaje con rescate)', term: 'licencia FCDME' },

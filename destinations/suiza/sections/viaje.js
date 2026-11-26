@@ -33,9 +33,9 @@ export default {
     const driveOut = p.travelOut.reduce((a, d) => a + d.totalH, 0), driveRet = p.travelRet.reduce((a, d) => a + d.totalH, 0);
     const seg = (n, cls, label) => n > 0 ? `<div style="flex:${n};padding:12px 10px;border-radius:12px;background:${cls};font-weight:700;font-size:14px;text-align:center;min-width:60px">${label}</div>` : '';
     return `
-    <p class="kicker">${ui.esc(c.origin.name)} → ${p.stays.map(st => ui.esc(st.base.town)).join(' → ')} · camper</p>
+    <p class="kicker">${ui.esc(c.origin.name)} → ${p.stays.map(st => ui.esc(st.base.short || st.base.town)).join(' → ')} · camper</p>
     <h1 class="title">Configura <span class="grad-text">tu viaje</span></h1>
-    <p class="lead">Cambia cualquier dato y todo se recalcula: etapas, paradas, días en Suiza, plan de cada día, plazos de los trámites, tiempo previsto, presupuesto y equipaje.</p>
+    <p class="lead">Cambia cualquier dato y todo se recalcula: etapas, paradas, noches en cada zona, plan de cada día, plazos de los trámites, tiempo previsto, presupuesto y equipaje.</p>
     ${nowPanel(ctx)}
 
     <div class="grid g4">
