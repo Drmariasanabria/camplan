@@ -23,10 +23,11 @@ export function regionOf(id, place) {
   const R = REGIONS.find(r => r.id === id); if (R) return R;
   if (place?.area) place = place.area; // el camping elegido conserva la zona buscada
   if (place?.pos) {
-    const n = REGIONS.map(r => [r, near(r.pos, place.pos)]).sort((a, b) => a[1] - b[1])[0];
+    const n = REGIONS.filter(r => !place.country || (r.country || 'CH') === place.country).map(r => [r, near(r.pos, place.pos)]).sort((a, b) => a[1] - b[1])[0];
     if (n && n[1] < 12) return n[0];
     const k = 'custom-' + place.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    if (!CUSTOM.has(k)) CUSTOM.set(k, { id: k, name: place.name, short: place.name.split(',')[0], pos: place.pos, elev: place.elev || 1100, top: 2500, web: `https://www.myswitzerland.com/es-es/` });
+    const cc = place.country || 'CH';
+    if (!CUSTOM.has(k)) CUSTOM.set(k, { id: k, name: place.name, short: place.name.split(',')[0], pos: place.pos, elev: place.elev || 1100, top: 2500, country: cc, side: cc === 'CH' ? undefined : 'valais', web: cc === 'IT' ? 'https://www.lovevda.it/' : cc === 'FR' ? 'https://www.france.fr/' : 'https://www.myswitzerland.com/es-es/' });
     return CUSTOM.get(k);
   }
   return REGIONS[0];
@@ -53,6 +54,13 @@ export const isHigh = s => inRange(s, HIGH_SEASON[0], HIGH_SEASON[1]) || [0, 6].
 export function getCfg(ctx) {
   const c = ctx.get('cfg', {});
   return { ...DEFAULT_CFG, ...c, origin: { ...DEFAULT_CFG.origin, ...c.origin }, van: { ...DEFAULT_CFG.van, ...c.van }, interests: { ...DEFAULT_CFG.interests, ...c.interests } };
+}
+/* Vuelta efectiva: las rutas «desde Italia» solo tienen sentido si la última parada está en Italia */
+function effectiveCfg(cfg) {
+  const out = { ...cfg }, s = staysOf(cfg).at(-1), lastC = countryOf(baseById(s.base, s.place));
+  if (STRATEGIES[cfg.retStrategy]?.needs === 'IT' && lastC !== 'IT') { out.retStrategy = 'A'; out._retAuto = true; }
+  if (STRATEGIES[cfg.outStrategy]?.onlyRet) out.outStrategy = 'A';
+  return out;
 }
 
 /* ─────────── Distancias (OSRM en vivo con respaldo) ─────────── */
@@ -90,7 +98,7 @@ const lastBase = cfg => { const s = staysOf(cfg).at(-1); return baseById(s.base,
 const posOf = (k, cfg, dir = 'out') => k === 'ORIGIN' ? cfg.origin.pos : k === 'BASE' ? (dir === 'ret' ? lastBase(cfg) : baseOf(cfg)).pos : P[k];
 
 export async function prepare(ctx) {
-  const cfg = getCfg(ctx), live = ctx.live;
+  const cfg = effectiveCfg(getCfg(ctx)), live = ctx.live;
   const pairs = new Map();
   for (const [s, dir] of [[cfg.outStrategy, 'out'], [cfg.retStrategy, 'ret']]) {
     const ch = chainFor(s, cfg, dir).map(k => posOf(k, cfg, dir));
@@ -169,7 +177,7 @@ function splitDays(stratKey, cfg, dir, manual) {
 
 /* ─────────── Plan completo ─────────── */
 export function plan(ctx) {
-  const cfg = getCfg(ctx), base = baseOf(cfg), endBase = lastBase(cfg), warn = [];
+  const cfg = effectiveCfg(getCfg(ctx)), base = baseOf(cfg), endBase = lastBase(cfg), warn = [];
   const out = splitDays(cfg.outStrategy, cfg, 'out', cfg.stopsOut), ret = splitDays(cfg.retStrategy, cfg, 'ret', cfg.stopsRet);
   const arrive = addDays(cfg.depart, out.days.length - 1);
   const homeArrive = addDays(cfg.homeBy, cfg.bufferDay ? -1 : 0);
@@ -178,8 +186,9 @@ export function plan(ctx) {
   const [h0, m0] = cfg.departTime.split(':').map(Number);
   const mkTravel = (sp, startDate, dir) => sp.days.map((d, i) => {
     const date = addDays(startDate, i), driveH = d.h * 1.0, totalH = d.h * 1.12;
-    const arr = h0 + m0 / 60 + totalH, from = i === 0 ? (dir === 'out' ? cfg.origin.name : endBase.name) : sp.days[i - 1].stop.name, to = d.stop ? d.stop.name : (dir === 'out' ? base.name : cfg.origin.name);
-    return { date, dir, km: d.km, driveH, totalH, arrival: arr, from, to, stop: d.stop, over: d.over, late: arr > 17.25 };
+    const tStr = cfg.dayTimes?.[date] || cfg.departTime, [hh, mm] = tStr.split(':').map(Number);
+    const arr = hh + mm / 60 + totalH, from = i === 0 ? (dir === 'out' ? cfg.origin.name : endBase.name) : sp.days[i - 1].stop.name, to = d.stop ? d.stop.name : (dir === 'out' ? base.name : cfg.origin.name);
+    return { date, dir, km: d.km, driveH, totalH, arrival: arr, departAt: tStr, from, to, stop: d.stop, over: d.over, late: arr > 17.25 };
   });
   const travelOut = mkTravel(out, cfg.depart, 'out'), travelRet = mkTravel(ret, leave, 'ret');
 
@@ -196,8 +205,7 @@ export function plan(ctx) {
     return st;
   });
   const lastC = countryOf(endBase);
-  if (STRATEGIES[cfg.retStrategy]?.needs === 'IT' && lastC !== 'IT') warn.push({ lvl: 'warn', t: `La vuelta «${STRATEGIES[cfg.retStrategy].short}» está pensada para salir desde Italia, pero la última estancia es ${endBase.town}. Cambia la ruta de vuelta en Mi viaje.` });
-  if (STRATEGIES[cfg.outStrategy]?.onlyRet) warn.push({ lvl: 'warn', t: 'Esa ruta es solo para la vuelta: elige otra para la ida.' });
+  if (cfg._retAuto) warn.push({ lvl: 'warn', t: `La última parada (${endBase.town}) no está en Italia: la vuelta va por autopista. Puedes cambiarla en Ajustes del viaje.` });
   if (raw.length > 1 && stays.at(-1).nights < 1) warn.push({ lvl: 'bad', t: `Las estancias suman ${fixed} noches pero solo hay ${nights}. Quita noches a alguna estancia o amplía el viaje.` });
   stays.forEach(st => {
     if (st.nights < 1) return;

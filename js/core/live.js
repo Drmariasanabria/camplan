@@ -112,9 +112,9 @@ export const commons = (q, n = 8) => cached(`cm:${q}:${n}`, 1440, async () => {
 });
 
 /* Buscar un lugar (Photon / OpenStreetMap) */
-export const geocode = (q) => cached('geo:' + q, 1440, async () => {
+export const geocode = (q) => cached('geo2:' + q, 1440, async () => {
   const d = await j(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5&lang=en`);
-  return d.features.map(f => ({ name: [f.properties.name, f.properties.city || f.properties.county, f.properties.country].filter(Boolean).join(', '), pos: [f.geometry.coordinates[1], f.geometry.coordinates[0]] }));
+  return d.features.map(f => ({ name: [f.properties.name, f.properties.city || f.properties.county, f.properties.country].filter(Boolean).join(', '), pos: [f.geometry.coordinates[1], f.geometry.coordinates[0]], country: f.properties.countrycode || '' }));
 });
 
 /* GET JSON con caché */
@@ -132,7 +132,7 @@ export const campsites = (pos, km = 20) => cached(`camps:${pos.join(',')}:${km}`
     const q = (word, tag) => j(`https://photon.komoot.io/api/?q=${word}&limit=40&osm_tag=tourism:${tag}&bbox=${bbox}`).then(d => d.features).catch(() => []);
     const fs = (await Promise.all([q('camping', 'camp_site'), q('stellplatz', 'caravan_site'), q('aire', 'caravan_site')])).flat();
     const seen = new Set();
-    return fs.filter(f => f.properties.country === 'Switzerland' || f.properties.countrycode === 'CH')
+    return fs.filter(f => ['CH', 'FR', 'IT', 'AT', 'DE'].includes(f.properties.countrycode))
       .map(f => ({ name: f.properties.name, pos: [f.geometry.coordinates[1], f.geometry.coordinates[0]], kind: f.properties.osm_value, city: f.properties.city || f.properties.county || '', tags: {} }))
       .filter(x => x.name && !seen.has(x.name + x.pos[0].toFixed(3)) && seen.add(x.name + x.pos[0].toFixed(3)));
   }

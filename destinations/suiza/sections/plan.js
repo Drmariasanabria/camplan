@@ -1,6 +1,6 @@
 // Pantalla principal: el viaje entero como itinerario editable.
 import { IMG, BASES, REGIONS, STRATEGIES, STOPS, ZONES, ROUTE_SHOWERS, CHECKED } from '../data.js';
-import { fmtDate, fmtLong, hhmm, diffDays, getCfg, staysOf, actById, activitiesFor, regionOf, nightPrice, money, curOf, countryOf, iso } from '../engine.js';
+import { fmtDate, fmtLong, hhmm, diffDays, addDays, getCfg, staysOf, actById, activitiesFor, regionOf, nightPrice, money, curOf, countryOf, iso } from '../engine.js';
 import { bindCfg } from '../common.js';
 import { openRoadbook } from '../roadbook.js';
 
@@ -12,7 +12,7 @@ const enc = encodeURIComponent;
 function driveCard(ctx, t, i, dir, cands) {
   const { ui, plan: p } = ctx, c = p.cfg, man = (dir === 'out' ? c.stopsOut : c.stopsRet) || {}, s = t.stop, sh = s && ROUTE_SHOWERS[s.id];
   return `<div class="drive"><span class="badge info">🚐 ${fmtDate(t.date)}</span><b>${ui.esc(t.from.replace('Camping-Car Park ', ''))} → ${ui.esc(t.to.replace('Camping-Car Park ', ''))}</b>
-    <span>${Math.round(t.km)} km · ${t.totalH.toFixed(1)} h · llegada ≈${hhmm(t.arrival)}</span>${t.late ? '<span class="badge warn">de noche</span>' : ''}${t.over ? '<span class="badge warn">etapa larga</span>' : ''}
+    <label class="small">Salida <input type="time" data-dtime="${t.date}" value="${t.departAt}" style="width:auto;padding:6px 8px;font-size:15px"></label><span>${Math.round(t.km)} km · ${t.totalH.toFixed(1)} h · llegada ≈<b>${hhmm(t.arrival)}</b></span>${t.late ? '<span class="badge warn">de noche</span>' : ''}${t.over ? '<span class="badge warn">etapa larga</span>' : ''}
     ${s || i < (dir === 'out' ? p.travelOut : p.travelRet).length - 1 ? `<label class="small" style="margin-left:auto">Dormir en <select data-stop="${dir}" data-i="${i}"><option value="">Automático${s ? ` (${s.name.replace('Camping-Car Park ', '')})` : ''}</option>${cands.map(x => `<option value="${x.id}" ${man[i] === x.id ? 'selected' : ''}>${x.name.replace('Camping-Car Park ', '')} · ${x.price ? x.price.toFixed(2) + ' €' : 'gratis'}</option>`).join('')}<option value="none" ${man[i] === 'none' ? 'selected' : ''}>Seguir sin parar</option></select></label>` : ''}
     ${s ? `<div class="small" style="flex-basis:100%;color:var(--muted)">🌙 ${s.name} · ${s.price ? s.price.toFixed(2) + ' €' : 'gratis'} · ${s.winter}${sh ? ` · 🚿 <a href="${sh.url}" target="_blank">${sh.name}</a> ${sh.price}` : ''} · <a href="https://park4night.com/en/search?lat=${s.pos[0]}&lng=${s.pos[1]}&z=14" target="_blank">park4night</a> · <a href="https://www.google.com/maps/dir/?api=1&destination=${s.pos[0]},${s.pos[1]}" target="_blank">navegar</a></div>` : ''}
   </div>`;
@@ -54,9 +54,15 @@ function stayCard(ctx, st, idx, total) {
     <div class="stay-body">
       <div class="stay-edit">
         <label class="field">Dónde dormís<select data-stay="${idx}" data-k="base">${camps}</select></label>
+        <label class="field" style="flex:0 1 170px">Llegada<input type="date" data-sdate="${idx}" data-k="in" value="${st.checkin}" ${idx === 0 ? '' : 'disabled title="Es el día que salís de la parada anterior"'}></label>
+        <label class="field" style="flex:0 1 170px">Salida<input type="date" data-sdate="${idx}" data-k="out" value="${st.checkout}" min="${st.checkin}"></label>
         <div class="field"><span>Noches</span>${last ? `<span class="small muted">Las que quedan hasta la vuelta: <b>${st.nights}</b></span>` : `<div class="stepper"><button data-n="${idx}" data-d="-1">−</button><span>${st.nights}</span><button data-n="${idx}" data-d="1">+</button></div>`}</div>
         <label class="field" style="flex:0 1 180px">Precio real/noche (${st.cur === 'EUR' ? '€' : 'CHF'})<input type="number" min="0" data-stay="${idx}" data-k="price" value="${st.price || ''}" placeholder="${Math.round(st.np)}"></label>
       </div>
+      <div class="stay-edit" style="padding-top:0">
+        <label class="field">¿Otro sitio? Escribe un pueblo o valle de los Alpes (Italia, Francia, Suiza…)<input type="text" data-q="${idx}" placeholder="p. ej. Courmayeur, Cervinia, Annecy, Arolla"></label>
+        <button type="button" class="btn" data-qgo="${idx}">🔎 Buscar</button>
+      </div><div class="link-list" id="qres-${idx}" style="margin:-6px 0 12px"></div>
       <div class="rows">
         <div class="row"><div class="k">🛏 Dormir</div><div class="v">
           <div class="item"><b>${b.web ? `<a href="${b.web}" target="_blank">${ui.esc(b.name)}</a>` : ui.esc(b.name)}</b><span class="price">≈${money(st.np, st.cur)}/noche</span>${b.status === 'ok' ? '' : ` <span class="badge ${b.status === 'bad' ? 'bad' : 'warn'}">${b.verdict}</span>`}</div>
@@ -151,26 +157,33 @@ export default {
 
   mount(el, ctx) {
     const { ui, live, plan: p } = ctx;
-    // Panel de ajustes (se mantiene abierto tras recalcular)
-    // El panel se mueve a <body>: dentro de la página animada no flotaría (y desbordaría en móvil)
-    document.querySelectorAll('body > #drawer, body > #dbg').forEach(n => n.remove());
-    const dr = el.querySelector('#drawer'), bg = el.querySelector('#dbg');
-    document.body.append(bg, dr);
-    addEventListener('hashchange', () => { dr.remove(); bg.remove(); }, { once: true });
+    // Panel de ajustes: vive en <body> y, si está abierto, se conserva tal cual al recalcular
+    // (así no se pierde el campo que estás escribiendo).
+    let dr = document.querySelector('body > #drawer'), bg = document.querySelector('body > #dbg');
+    const freshDr = el.querySelector('#drawer'), freshBg = el.querySelector('#dbg');
+    const reuse = dr && dr.classList.contains('open');
+    if (reuse) { freshDr.remove(); freshBg.remove(); }
+    else {
+      dr?.remove(); bg?.remove(); dr = freshDr; bg = freshBg; document.body.append(bg, dr);
+      addEventListener('hashchange', function h() { if (!location.hash.startsWith('#/suiza/plan')) { dr.remove(); bg.remove(); sessionStorage.removeItem('drawer'); } removeEventListener('hashchange', h); });
+    }
     const open = v => { dr.classList.toggle('open', v); bg.classList.toggle('open', v); sessionStorage.setItem('drawer', v ? '1' : ''); };
     if (location.hash.includes('ajustes')) { sessionStorage.setItem('drawer', '1'); history.replaceState(null, '', '#/suiza/plan'); }
-    if (sessionStorage.getItem('drawer')) { dr.style.transition = 'none'; open(true); requestAnimationFrame(() => dr.style.transition = ''); }
+    if (!reuse && sessionStorage.getItem('drawer')) { dr.style.transition = 'none'; open(true); requestAnimationFrame(() => dr.style.transition = ''); }
     el.querySelector('#dopen').onclick = () => open(true);
-    dr.querySelector('#dclose').onclick = bg.onclick = () => open(false);
-    bindCfg(dr, ctx);
-    dr.querySelector('#reset').onclick = () => { if (confirm('¿Volver al itinerario inicial? Se pierden los cambios de paradas y días.')) { ctx.set('cfg', {}); ctx.set('dayplan', {}); open(false); ctx.rerender(); } };
-    const res = dr.querySelector('#origin-res'), go = async () => {
-      const q = dr.querySelector('#origin-q').value.trim(); if (!q) return; res.innerHTML = '<span class="loader"></span>';
-      try { const list = await live.geocode(q); res.innerHTML = list.map((r, i) => `<a href="#" data-i="${i}">${ui.esc(r.name)}</a>`).join('') || 'Sin resultados';
-        res.querySelectorAll('a').forEach(a => a.onclick = e => { e.preventDefault(); const r = list[+a.dataset.i], cfg = getCfg(ctx); cfg.origin = { name: r.name.split(',')[0], pos: r.pos }; ctx.set('cfg', cfg); ctx.rerender(); });
-      } catch { res.textContent = 'No se pudo buscar ahora.'; }
-    };
-    dr.querySelector('#origin-go').onclick = go;
+    if (!reuse) {
+      dr.querySelector('#dclose').onclick = bg.onclick = () => open(false);
+      bindCfg(dr, ctx);
+      dr.querySelector('#reset').onclick = () => { if (confirm('¿Volver al itinerario inicial? Se pierden los cambios de paradas y días.')) { ctx.set('cfg', {}); ctx.set('dayplan', {}); open(false); ctx.rerender(); } };
+      const res = dr.querySelector('#origin-res'), go = async () => {
+        const q = dr.querySelector('#origin-q').value.trim(); if (!q) return; res.innerHTML = '<span class="loader"></span>';
+        try { const list = await live.geocode(q); res.innerHTML = list.map((r, i) => `<a href="#" data-i="${i}">${ui.esc(r.name)}</a>`).join('') || 'Sin resultados';
+          res.querySelectorAll('a').forEach(a => a.onclick = e => { e.preventDefault(); const r = list[+a.dataset.i], cfg = getCfg(ctx); cfg.origin = { name: r.name.split(',')[0], pos: r.pos }; ctx.set('cfg', cfg); ctx.rerender(); });
+        } catch { res.textContent = 'No se pudo buscar ahora.'; }
+      };
+      dr.querySelector('#origin-go').onclick = go;
+      dr.querySelector('#origin-q').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+    }
 
     // Paradas: editar, mover, quitar, añadir
     const saveStays = fn => { const cfg = getCfg(ctx), st = staysOf(cfg); fn(st, cfg); cfg.stays = st; delete cfg.base; delete cfg.nightPriceOverride; ctx.set('cfg', cfg); ctx.toast('Itinerario recalculado'); ctx.rerender(); };
@@ -181,6 +194,42 @@ export default {
     el.querySelectorAll('[data-del]').forEach(b => b.onclick = () => saveStays(st => { st.splice(+b.dataset.del, 1); st.at(-1).nights = 0; }));
     el.querySelectorAll('[data-add]').forEach(b => b.onclick = () => saveStays(st => { const at = +b.dataset.add; st.forEach((x, k) => { if (k < st.length - 1 && !x.nights) x.nights = 2; });
       if (at >= st.length) { st.at(-1).nights = 2; st.push({ base: 'zone:verbier', nights: 0, price: 0 }); } else st.splice(at, 0, { base: 'zone:verbier', nights: 2, price: 0 }); }));
+    // Fechas de cada parada
+    // Se aplica al salir del campo (o con Intro), no mientras se teclea
+    const onCommit = (inp, fn) => { let last = inp.value, t; const run = () => { clearTimeout(t); if (inp.value && inp.value !== last) { last = inp.value; fn(); } };
+      inp.addEventListener('blur', run); inp.addEventListener('keydown', e => e.key === 'Enter' && (e.preventDefault(), run()));
+      inp.addEventListener('change', () => { clearTimeout(t); t = setTimeout(run, 1000); }); };
+    el.querySelectorAll('[data-sdate]').forEach(inp => onCommit(inp, () => {
+      const i = +inp.dataset.sdate, st = p.stays[i], lastI = p.stays.length - 1;
+      const cfg = getCfg(ctx), sts = staysOf(cfg);
+      if (inp.dataset.k === 'in') { // mover la llegada de la primera parada = mover el día de salida de casa
+        cfg.depart = addDays(inp.value, -(p.travelOut.length - 1));
+      } else if (i < lastI) {
+        sts[i].nights = Math.max(1, diffDays(st.checkin, inp.value));
+      } else { // la última parada: su salida fija la vuelta a casa
+        cfg.homeBy = addDays(inp.value, (p.travelRet.length - 1) + (cfg.bufferDay ? 1 : 0));
+      }
+      sts.forEach((x, k) => { if (k < sts.length - 1) x.nights = Math.max(1, x.nights || p.stays[k]?.nights || 1); });
+      sts.at(-1).nights = 0; cfg.stays = sts; ctx.set('cfg', cfg); ctx.toast('Fechas actualizadas'); ctx.rerender();
+    }));
+    // Hora de salida de cada día de carretera
+    el.querySelectorAll('[data-dtime]').forEach(inp => onCommit(inp, () => {
+      const cfg = getCfg(ctx); cfg.dayTimes = { ...(cfg.dayTimes || {}), [inp.dataset.dtime]: inp.value }; ctx.set('cfg', cfg); ctx.rerender();
+    }));
+    // Buscar cualquier lugar para una parada
+    el.querySelectorAll('[data-qgo]').forEach(b => {
+      const i = +b.dataset.qgo, inp = el.querySelector(`[data-q="${i}"]`), box = el.querySelector('#qres-' + i);
+      const go = async () => {
+        const q = inp.value.trim(); if (!q) return; box.innerHTML = '<span class="loader"></span>';
+        try {
+          const list = (await live.geocode(q)).filter(r => r.pos[0] > 43.3 && r.pos[0] < 48.6 && r.pos[1] > 4.5 && r.pos[1] < 16.5);
+          box.innerHTML = list.map((r, k) => `<a href="#" data-k="${k}">${FLAG[r.country] || '📍'} ${ui.esc(r.name)}</a>`).join('') || '<span class="small muted">No lo encuentro en los Alpes.</span>';
+          box.querySelectorAll('a').forEach(a => a.onclick = e => { e.preventDefault(); const r = list[+a.dataset.k];
+            saveStays(sts => { sts[i].base = 'place'; sts[i].place = { name: r.name.split(',')[0], pos: r.pos, country: r.country }; sts[i].price = 0; }); });
+        } catch { box.textContent = 'No se pudo buscar ahora.'; }
+      };
+      b.onclick = go; inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+    });
     // Paradas de noche en ruta
     el.querySelectorAll('[data-stop]').forEach(s => s.addEventListener('change', () => { const cfg = getCfg(ctx), k = s.dataset.stop === 'out' ? 'stopsOut' : 'stopsRet', m = { ...(cfg[k] || {}) };
       if (s.value) m[s.dataset.i] = s.value; else delete m[s.dataset.i]; Object.keys(m).forEach(i => +i > +s.dataset.i && delete m[i]); cfg[k] = m; ctx.set('cfg', cfg); ctx.rerender(); }));
