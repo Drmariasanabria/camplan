@@ -25,7 +25,7 @@ export default {
     });
     const st = ctx.get('campStatus', {});
     return `<p class="kicker">Alojamiento</p><h1 class="title">Dónde dormir <span class="grad-text">en Suiza</span></h1>
-    <p class="lead">Vuestro plan: ${p.stays.map(st => `<b>${st.base.name}</b> ${fmtDate(st.checkin)} → ${fmtDate(st.checkout)} (${st.nights} n)`).join(' · ')}. Precios para <b>${c.adults} adultos y ${c.dogs} perro${c.dogs === 1 ? '' : 's'}</b>; las estancias se cambian en <a href="#/suiza/viaje">Mi viaje</a>. En Suiza (cantón de Berna) está prohibido dormir fuera de campings y áreas (multas de 200 a 2.000 CHF). En Chamonix, la acampada en parkings está muy controlada; en el Valle de Aosta, las «aree di sosta» son baratas y legales.</p>
+    <p class="lead">Vuestro plan: ${p.stays.map(st => `<b>${st.base.name}</b> ${fmtDate(st.checkin)} → ${fmtDate(st.checkout)} (${st.nights} n)`).join(' · ')}. Precios para <b>${c.adults} adultos y ${c.dogs} perro${c.dogs === 1 ? '' : 's'}</b>; las estancias se cambian en <a href="#/suiza/plan">Mi viaje</a>. En Suiza (cantón de Berna) está prohibido dormir fuera de campings y áreas (multas de 200 a 2.000 CHF). En Chamonix, la acampada en parkings está muy controlada; en el Valle de Aosta, las «aree di sosta» son baratas y legales.</p>
     ${p.stays.map((st, i) => st.base.generic ? `<div class="card no-tilt" style="margin-bottom:20px"><span class="tag ${st.base.verdict === 'Elige un camping' ? 'warn' : 'ok'}">Estancia ${i + 1} · ${fmtDate(st.checkin)} → ${fmtDate(st.checkout)} · ${st.nights} noches</span>
       <h3 style="font-size:26px">${st.base.verdict === 'Elige un camping' ? `Elige dónde dormir en ${ui.esc(st.base.town)}` : `📍 ${ui.esc(st.base.name)}`}</h3>
       ${st.base.cons[0] ? `<p style="color:var(--warn)">🚐 ${st.base.cons[0]}</p>` : ''}
@@ -36,7 +36,7 @@ export default {
       `<b>${{ FR: '🇫🇷', CH: '🇨🇭', IT: '🇮🇹' }[countryOf(r.b)] || ''} ${r.b.name}</b>${inStay(r.b.id).length ? ` <span class="badge ok">En tu plan · ${inStay(r.b.id).reduce((a, st) => a + st.nights, 0)} n</span>` : ''}`, r.b.town, money(r.np, r.cur), ui.eur(r.tot),
       r.issues.length ? `<span class="badge bad">${r.issues.join(' · ')}</span>` : `<span class="badge ${r.b.status === 'ok' ? 'ok' : 'warn'}">${r.b.verdict}</span>`,
       inStay(r.b.id).length ? '' : `<button class="btn sm" data-base="${r.b.id}">＋ Añadir estancia</button>`]), { num: [2, 3] })}
-    <p class="small muted">Precios estimados con las tarifas publicadas (parcela + adultos + tasa turística + perros + luz). Cuando os contesten, poned el precio real de cada estancia en <a href="#/suiza/viaje">Mi viaje</a>.</p>
+    <p class="small muted">Precios estimados con las tarifas publicadas (parcela + adultos + tasa turística + perros + luz). Cuando os contesten, poned el precio real de cada estancia en <a href="#/suiza/plan">Mi viaje</a>.</p>
 
     <div class="grid g2" style="margin-top:24px">${rows.map(({ b, np, cur, issues }) => `
       <div class="card photo" style="min-height:560px"><div class="ph" style="background-image:url('${b.img}')"></div><div class="body">

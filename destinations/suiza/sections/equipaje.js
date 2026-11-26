@@ -69,7 +69,7 @@ export default {
     const { ui, plan: p } = ctx, c = p.cfg, x = { ...EXTRA_DEF, ...ctx.get('packx', {}) };
     const groups = Object.entries(ITEMS(c, x, ui, p.totalDays)).map(([k, l]) => [k, l.filter(i => i[2] === undefined || i[2]).map(([id, t]) => ({ id, t }))]).filter(([, l]) => l.length);
     return `<p class="kicker">Configurador</p><h1 class="title">Qué llevar <span class="grad-text">en la camper</span></h1>
-    <p class="lead">La lista sale de tu viaje: ${c.adults} adultos, ${c.skiers} esquiando, ${c.dogs} perro${c.dogs === 1 ? '' : 's'}, ${p.totalDays} días y lo que queréis hacer (<a href="#/suiza/viaje">cambiar</a>). Ajusta también tu equipamiento:</p>
+    <p class="lead">La lista sale de tu viaje: ${c.adults} adultos, ${c.skiers} esquiando, ${c.dogs} perro${c.dogs === 1 ? '' : 's'}, ${p.totalDays} días y lo que queréis hacer (<a href="#/suiza/plan">cambiar</a>). Ajusta también tu equipamiento:</p>
     <fieldset><div class="form-grid">
       <label class="field">Calefacción<select data-x="heater">${[['diesel', 'Estacionaria diésel'], ['gas', 'De gas'], ['none', 'Solo eléctrica']].map(([k, l]) => `<option value="${k}" ${x.heater === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
       <label class="field">Cocina<select data-x="cook">${[['gas', 'Gas'], ['ind', 'Inducción']].map(([k, l]) => `<option value="${k}" ${x.cook === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>

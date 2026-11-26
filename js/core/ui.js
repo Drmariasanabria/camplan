@@ -57,12 +57,12 @@ export function segmented(name, options, value) {
 /* Mapa Leaflet con estilo oscuro */
 export function makeMap(el, center, zoom) {
   const m = L.map(el, { scrollWheelZoom: false, zoomControl: true }).setView(center, zoom);
-  const dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap © CARTO', maxZoom: 19 });
+  const dark = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 19 });
   const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { attribution: '© OpenTopoMap (CC-BY-SA)', maxZoom: 17 });
   const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Esri World Imagery', maxZoom: 19 });
   const ski = L.tileLayer('https://tiles.opensnowmap.org/pistes/{z}/{x}/{y}.png', { attribution: 'OpenSnowMap', maxZoom: 18 });
   dark.addTo(m);
-  L.control.layers({ 'Oscuro': dark, 'Topográfico': topo, 'Satélite': sat }, { 'Pistas de esquí': ski }).addTo(m);
+  L.control.layers({ 'Mapa': dark, 'Topográfico': topo, 'Satélite': sat }, { 'Pistas de esquí': ski }).addTo(m);
   return m;
 }
 /* Carga una capa de OSM con estado y botón de reintento (Overpass a veces se satura) */

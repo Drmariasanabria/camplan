@@ -11,7 +11,7 @@ function nowPanel(ctx) {
     const d = p.days.find(x => x.date === today), nx = p.days.find(x => x.date > today);
     const what = d => d.travel ? `🚐 ${ui.esc(d.travel.from)} → ${ui.esc(d.travel.to)} · ${Math.round(d.travel.km)} km` : d.kind === 'buffer' ? 'Día colchón' : (ACT(d.act)?.name || 'Día libre');
     return `<div class="callout ok"><p class="kicker" style="margin:0 0 6px">Hoy · ${fmtLong(today)}</p><h3 style="font-size:26px">${what(d)}</h3>
-      ${nx ? `<p>Mañana: ${what(nx)}</p>` : ''}<div class="btn-row"><a class="btn primary sm" href="#/suiza/itinerario">Ver el día completo</a><a class="btn sm" href="#/suiza/tiempo">Tiempo y aludes</a><a class="btn sm" href="#/suiza/emergencias">Emergencias</a></div></div>`;
+      ${nx ? `<p>Mañana: ${what(nx)}</p>` : ''}<div class="btn-row"><a class="btn primary sm" href="#/suiza/plan">Ver el día completo</a><a class="btn sm" href="#/suiza/tiempo">Tiempo y aludes</a><a class="btn sm" href="#/suiza/emergencias">Emergencias</a></div></div>`;
   }
   if (today > c.homeBy) return '';
   const days = diffDays(today, c.depart);
@@ -21,7 +21,7 @@ function nowPanel(ctx) {
     <div class="stat" style="background:linear-gradient(120deg,rgba(124,92,255,.25),rgba(94,231,255,.08))"><div class="l">Faltan</div><div class="v grad-text" style="font-size:54px">${days} días</div><div class="l">para salir de ${ui.esc(c.origin.name)}</div></div>
     <div class="stat"><div class="l">Lo próximo por hacer</div>${pend.map(x => { const dd = diffDays(today, x.due); return `<div style="margin-top:8px;font-size:15px"><span class="badge ${dd < 0 ? 'bad' : dd <= 3 ? 'warn' : ''}">${dd < 0 ? 'Atrasado' : dd === 0 ? 'Hoy' : fmtDate(x.due)}</span> ${x.t}</div>`; }).join('') || '<div class="v">Todo hecho ✅</div>'}
       <a class="btn sm" style="margin-top:12px" href="#/suiza/preparar">Ver todas</a></div>
-    <div class="stat"><div class="l">Reserva del camping</div><div class="v" style="font-size:24px">${ui.esc(camp)}</div><div class="l">${ui.esc(p.base.name)}</div><a class="btn sm" style="margin-top:12px" href="#/suiza/dormir">Correo y estado</a></div>
+    <div class="stat"><div class="l">Reserva del camping</div><div class="v" style="font-size:24px">${ui.esc(camp)}</div><div class="l">${ui.esc(p.base.name)}</div><a class="btn sm" style="margin-top:12px" href="#/suiza/plan">Correo y estado</a></div>
   </div>`;
 }
 
@@ -55,8 +55,8 @@ export default {
       ${seg(p.travelRet.length, 'rgba(255,94,168,.22)', `🚐 Vuelta · ${p.travelRet.length} d`)}
       ${seg(c.bufferDay ? 1 : 0, 'rgba(255,255,255,.08)', 'Colchón')}
     </div>
-    <p class="small muted" style="margin-bottom:14px">Del ${fmtLong(c.depart)} al ${fmtLong(c.homeBy)} · ${p.totalDays} días · <a href="#/suiza/itinerario">ver el plan de cada día →</a></p>
-    <div class="btn-row" style="margin-top:0"><button class="btn primary" id="rb">📄 Descargar el plan en PDF</button><a class="btn" href="#/suiza/itinerario">🗓️ Plan día a día</a><a class="btn" href="#/suiza/preparar">✅ Antes de salir</a></div>
+    <p class="small muted" style="margin-bottom:14px">Del ${fmtLong(c.depart)} al ${fmtLong(c.homeBy)} · ${p.totalDays} días · <a href="#/suiza/plan">ver el plan de cada día →</a></p>
+    <div class="btn-row" style="margin-top:0"><button class="btn primary" id="rb">📄 Descargar el plan en PDF</button><a class="btn" href="#/suiza/plan">🗓️ Plan día a día</a><a class="btn" href="#/suiza/preparar">✅ Antes de salir</a></div>
     ${warnList(p)}
 
     <form onsubmit="return false">
@@ -96,7 +96,7 @@ export default {
       ${ui.sel('retStrategy', 'Ruta de vuelta', c.retStrategy, Object.entries(STRATEGIES).map(([k, s]) => [k, s.name]), countryOf(p.endBase) === 'IT' ? 'Saliendo de Italia: por Montgenèvre (sin túneles) o por el túnel del Mont Blanc' : 'Ida tranquila por la mixta y vuelta por autopista es buen equilibrio')}
       </div><div class="btn-row">${ui.tog('vignette', 'Comprar viñeta suiza (40 CHF) para usar autopistas en Suiza', c.vignette !== false)}</div>
       <p class="small muted">${c.vignette !== false ? 'Con viñeta podéis usar autopistas suizas.' : `Sin viñeta: por Suiza solo carreteras cantonales; entre el Valais e Interlaken, el ${t('Lötschberg', 'tren del Lötschberg')}. Ojo: la autopista Martigny–Sion sí la exige.`}</p>
-      <p class="small muted" style="margin-top:12px">Las paradas de cada noche se eligen solas según tus horas máximas. Puedes fijarlas a mano en <a href="#/suiza/ruta">Ruta</a>.</p></fieldset>
+      <p class="small muted" style="margin-top:12px">Las paradas de cada noche se eligen solas según tus horas máximas. Puedes fijarlas a mano en <a href="#/suiza/plan">Ruta</a>.</p></fieldset>
 
     <fieldset><legend>🏕️ Dónde dormís en Suiza</legend>
       <p class="small muted" style="margin-top:0">Divide la estancia en tantas paradas como queráis. La última se queda con las noches que sobren. Entre una y otra se añade un día de traslado.</p>
@@ -112,7 +112,7 @@ export default {
       </div>`).join('')}
       <div class="form-grid" style="margin-top:10px"><label class="field">¿Otro lugar que no está en la lista?<input type="text" id="place-q" placeholder="Pueblo o valle de Suiza, p. ej. Arolla"></label><div style="display:flex;align-items:flex-end"><button type="button" class="btn" id="place-go">🔎 Buscar y añadir</button></div></div>
       <div id="place-res" class="link-list" style="margin-top:10px"></div>
-      <div class="btn-row"><button type="button" class="btn" id="stay-add">＋ Añadir otra estancia</button><a class="btn" href="#/suiza/dormir">Comparar campings y correos</a></div></fieldset>
+      <div class="btn-row"><button type="button" class="btn" id="stay-add">＋ Añadir otra estancia</button><a class="btn" href="#/suiza/plan">Comparar campings y correos</a></div></fieldset>
 
     <fieldset><legend>🎿 Qué queréis hacer</legend>
       <div class="btn-row">${[['ski', 'Esquí en pista'], ['tour', 'Esquí de travesía / fuera de pista'], ['trail', 'Trail running'], ['snowshoe', 'Raquetas y senderismo invernal'], ['sled', 'Trineo'], ['pool', 'Piscina y pueblo los días malos']].map(([k, l]) => ui.tog('interests.' + k, l, c.interests[k])).join('')}</div>

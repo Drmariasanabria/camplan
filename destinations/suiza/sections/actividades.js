@@ -58,7 +58,7 @@ const mod = {
         <p>${c.interests.ski && c.skiers ? `${c.skiers} esquiador${c.skiers > 1 ? 'es' : ''} × ${c.skiDays} días · tarifa ${p.skiDates.some(isHigh) ? 'alta' : 'baja'} · ${ui.eur(skiCHF * c.skiers / p.fx)}` : 'Sin esquí en tu configuración.'}</p>
         <p class="small">Días de esquí del plan: ${p.skiDates.map(fmtDate).join(', ') || 'ninguno'}.</p>
         <p class="small">Quien no esquía: ${t('pase invernal')} 61 CHF/día (${c.winterPassDays} días-persona en tu presupuesto). Trineo ${t('Big Pintenfritz')}: 55 CHF.</p>
-        <a class="btn sm" href="#/suiza/viaje">Cambiar días y esquiadores</a></div>
+        <a class="btn sm" href="#/suiza/plan">Cambiar días y esquiadores</a></div>
     </div>
     <div class="callout warn"><h3>Días de esquí con perros</h3><p>${c.adults > c.skiers ? `Esquía ${c.skiers === 1 ? 'una persona' : c.skiers + ' personas'} y ${c.adults - c.skiers === 1 ? 'la otra va' : 'el resto va'} con los perros: el plan ya propone una ruta con perros para esos días.` : `Esquiáis todos: necesitáis ${t('petsitting24', 'cuidador de perros')} esos días.`} Los perros no pueden entrar en pistas ni en trineos. No planifiquéis horas de perros solos en la furgo.</p></div>
 

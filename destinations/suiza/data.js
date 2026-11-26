@@ -14,6 +14,8 @@ export const IMG = {
   jungfraujoch: T('0/0e/Sphinx_et_Jungfrau_-_img_06980.jpg'), wengen: T('c/c1/1_wengen_2012.jpg'),
   bourg: T('e/ed/Monast%C3%A8re_royal_de_Brou_%28%C3%A9glise%29_%281%29.JPG'), limoges: T('f/f2/Centre-ville_et_champ_de_Juillet.JPG'),
   collie: T('e/e4/Border_Collie_600.jpg'),
+  chamonix: T('1/1f/Chamonix_valley_from_la_Fl%C3%A9g%C3%A8re%2C2010_07.JPG'), montblanc: T('a/a2/Mont_Blanc_Aiguille.jpg'),
+  champoluc: T('0/05/Champoluc%2C_Italia.jpg'), gressoney: T('6/6a/GressoneyLT_veduta.jpg'), lathuile: T('2/22/Panorama_La_Thuile_da_Chaz_Dura.jpg'), unterseen: T('b/b6/Unterseen.jpg'),
 };
 
 /* ─────────────── Configuración por defecto (todo editable en «Mi viaje») ─────────────── */
@@ -130,33 +132,33 @@ export const BASES = [
     pros: ['Granja con 8 plazas', 'Ducha incluida', 'Precio cerrado ≈50 CHF/noche 2 personas'],
     cons: ['Sin vaciado de grises', 'Perros e invierno: preguntar', 'Ubicación aproximada'], tel: '+41 79 434 43 85', mail: '', web: 'https://www.google.com/maps/search/?api=1&query=Hof+Rubi+Grindelwald', estimate: '50 CHF/noche 2 personas' },
   // ── Francia · Chamonix ── fuente: les2glaciers.com/tarifs.html (invierno 2026/27, 17/12/2026–30/04/2027)
-  { id: 'deuxglaciers', short: 'Chamonix', elev: 1010, region: 'chamonix', country: 'FR', cur: 'EUR', name: 'Camping Les Deux Glaciers', town: 'Les Bossons (Chamonix)', pos: [45.9049, 6.8395], img: IMG.jungfrau,
+  { id: 'deuxglaciers', short: 'Chamonix', elev: 1010, region: 'chamonix', country: 'FR', cur: 'EUR', name: 'Camping Les Deux Glaciers', town: 'Les Bossons (Chamonix)', pos: [45.9049, 6.8395], img: IMG.chamonix,
     pitch: 26.5, incl: 2, extraAdult: 9, adult: 0, tax: 0.6, dog: 1, dogFree: 1, elec: 7, maxDogs: 9, opens: '2026-12-15', status: 'ok', verdict: 'Recomendado · invierno desde el 15–17/12',
     toGrindelwald: '', toInterlaken: '',
     pros: ['Forfait 26,50 €/noche: parcela + vehículo + 2 personas', 'Luz 6 A: 7 € · 10 A: 11 €', 'Tasa 0,60 €/adulto · 1 perro gratis, el 2.º 1 €/día', 'Aseos calefactados con agua caliente incluida, sala de secado', 'Lavadora 6 € · secadora 3,80 €', 'Tarjeta de huésped con descuentos en el valle', 'Bus del valle muy cerca: no hace falta mover la furgo'],
     cons: ['La web dice «abierto desde el 15/12» y la tarifa de invierno empieza el 17/12: confirmad la fecha de llegada'],
     tel: '+33 4 50 53 15 84', mail: 'les2glaciers@gmail.com', web: 'https://www.les2glaciers.com/', estimate: '26,50 € (2 pers.) + luz 7 € + tasa 2×0,60 € + 2.º perro 1 €' },
   // ── Suiza · Interlaken ── fuentes: camping-lodge.com (Alpenblick), campinginterlaken.ch, campingberneroberland.ch
-  { id: 'alpenblick', short: 'Interlaken', elev: 565, region: 'jungfrau', country: 'CH', name: 'Camping Alpenblick', town: 'Unterseen (Interlaken)', pos: [46.6862, 7.8384], img: IMG.thun,
+  { id: 'alpenblick', short: 'Interlaken', elev: 565, region: 'jungfrau', country: 'CH', name: 'Camping Alpenblick', town: 'Unterseen (Interlaken)', pos: [46.6862, 7.8384], img: IMG.unterseen,
     pitch: 32.3, adult: 0, tax: 2.8, dog: 5, elec: 0, maxDogs: 2, opens: '2026-01-01', status: 'warn', verdict: 'Abierto en invierno · precio por confirmar',
     toGrindelwald: '35 min en coche · tren desde Interlaken Ost', toInterlaken: '5 min',
     pros: ['Abierto todo el año con self check-in (recepción sin personal desde el 25/10)', 'Aseos y duchas calefactados', 'Hasta 2 perros por parcela, con correa', 'Lavadora y secadora · vaciado de químico', 'Reserva online'],
     cons: ['No publica tarifa de invierno: «Comfort» desde 32,30 CHF/noche (tarifa general); el resto es estimación', 'La parcela «Classic» no está disponible en invierno', 'Para reservar el mismo día no hay reserva online'],
     tel: '+41 33 822 77 57', mail: 'info@camping-alpenblick.ch', web: 'https://campinglodge.934hospitality.com/availability?property=4', estimate: 'Comfort desde 32,30 CHF + tasa y perros estimados' },
   // ── Italia · Valle de Aosta (Monte Rosa) ── fuentes: areacamperchampoluc.com, lovevda.it, campercontact
-  { id: 'champoluc', short: 'Champoluc', elev: 1568, region: 'monterosa', country: 'IT', cur: 'EUR', name: 'Area Camper Champoluc', town: 'Champoluc (Val d’Ayas)', pos: [45.8266, 7.7164], img: IMG.jungfrau,
+  { id: 'champoluc', short: 'Champoluc', elev: 1568, region: 'monterosa', country: 'IT', cur: 'EUR', name: 'Area Camper Champoluc', town: 'Champoluc (Val d’Ayas)', pos: [45.8266, 7.7164], img: IMG.champoluc,
     pitch: 20, adult: 0, tax: 0, dog: 0, elec: 0, maxDogs: 9, opens: '2026-01-01', status: 'ok', verdict: 'Recomendado · abierta todo el año',
     toGrindelwald: '', toInterlaken: '',
     pros: ['20 €/24 h con luz (6 A) y tasa turística incluidas', 'Duchas calientes de pago (≈1 € por 1,5 min: llevad monedas)', 'Lavadora de pago · carga y descarga', 'Agua y descarga funcionando incluso a −5 °C (opiniones)', 'Bus lanzadera gratuito en temporada alta', 'Admite perros'],
     cons: ['No se aceptan reservas: llegad pronto el 24/12'],
     tel: '+39 351 603 2632', mail: 'info@areacamperchampoluc.com', web: 'https://www.areacamperchampoluc.com', estimate: '20 € todo incluido' },
-  { id: 'tschaval', short: 'Gressoney', elev: 1825, region: 'monterosa', country: 'IT', cur: 'EUR', name: 'Area Camper Tschaval', town: 'Gressoney-La-Trinité (Staffal)', pos: [45.8561, 7.8138], img: IMG.jungfrau,
+  { id: 'tschaval', short: 'Gressoney', elev: 1825, region: 'monterosa', country: 'IT', cur: 'EUR', name: 'Area Camper Tschaval', town: 'Gressoney-La-Trinité (Staffal)', pos: [45.8561, 7.8138], img: IMG.gressoney,
     pitch: 12, adult: 0, tax: 0, vehicleTax: 1.5, dog: 0, elec: 3, maxDogs: 9, opens: '2026-01-01', status: 'warn', verdict: 'Muy barata pero SIN duchas',
     toGrindelwald: '', toInterlaken: '',
     pros: ['12 €/24 h + luz 3 € (3 A) + tasa 1,50 €/vehículo', 'Abierta todo el año y siempre despejada de nieve', 'A 1.825 m, a pie de remontes', 'Locales calefactados · admite perros'],
     cons: ['NO tiene duchas (lo dice la propia web del área)', 'En pleno invierno el vaciado puede no funcionar', 'Luz de solo 3 A (650 W)', 'Sin reservas'],
     tel: '+39 347 846 6336', mail: 'area.camper.tschaval@gmail.com', web: 'https://www.sostatschaval.altervista.org/joomla/', estimate: '12 € + 3 € luz + 1,50 € tasa' },
-  { id: 'grandassaly', short: 'La Thuile', elev: 1441, region: 'lathuile', country: 'IT', cur: 'EUR', name: 'Area Camper Grand Assaly (ex Azzurra)', town: 'La Thuile (Villaret)', pos: [45.7186, 6.9525], img: IMG.jungfrau,
+  { id: 'grandassaly', short: 'La Thuile', elev: 1441, region: 'lathuile', country: 'IT', cur: 'EUR', name: 'Area Camper Grand Assaly (ex Azzurra)', town: 'La Thuile (Villaret)', pos: [45.7186, 6.9525], img: IMG.lathuile,
     pitch: 22, adult: 0, tax: 0, dog: 1, elec: 0, maxDogs: 9, opens: '2026-01-01', status: 'warn', verdict: 'Confirmar que sigue abierta',
     toGrindelwald: '', toInterlaken: '',
     pros: ['22 €/24 h · perros 1 €/día', 'Duchas con agua caliente', '75 plazas, con recepción', 'A ≈400 m del teleférico; Courmayeur cerca'],
@@ -269,8 +271,8 @@ export const INFO = {
 /* ─────────────── Tareas de preparación (plazo relativo a la salida) ─────────────── */
 // daysBefore: cuántos días antes de salir, como tarde · notBefore: fecha mínima
 export const PREP = [
-  { id: 'camping', days: 25, cat: 'Reservas', t: 'Pedir disponibilidad y precio total por escrito a cada camping (perros, luz, grises en invierno)', go: 'dormir' },
-  { id: 'alt', days: 25, cat: 'Reservas', t: 'Tener una alternativa en cada zona por si alguno no confirma (en «Dónde dormir» hay varias)' , go: 'dormir'},
+  { id: 'camping', days: 25, cat: 'Reservas', t: 'Pedir disponibilidad y precio total por escrito a cada camping (perros, luz, grises en invierno)', go: 'plan' },
+  { id: 'alt', days: 25, cat: 'Reservas', t: 'Tener una alternativa en cada zona por si alguno no confirma (en «Dónde dormir» hay varias)' , go: 'plan'},
   { id: 'critair', days: 21, cat: 'Vehículo', t: "Pedir la pegatina Crit'Air (tarda en llegar a España)", term: "Crit'Air" },
   { id: 'dogs', days: 21, cat: 'Perros', t: 'Revisar pasaportes de los perros: chip legible y antirrábica en vigor', term: 'BLV' },
   { id: 'insurance', days: 20, cat: 'Seguros', t: 'Seguro de montaña con Europa para los dos (licencia o seguro de viaje con rescate)', term: 'licencia FCDME' },
@@ -284,7 +286,7 @@ export const PREP = [
   { id: 'heater', days: 7, cat: 'Vehículo', t: 'Probar a fondo calefacción, carga a 230 V, agua y vaciado de grises (electroválvula)', term: 'grises' },
   { id: 'gas', days: 7, cat: 'Vehículo', t: 'Bombona llena: las españolas no se rellenan en Suiza' },
   { id: 'sitter', days: 7, cat: 'Perros', t: 'Reservar cuidador si vais a esquiar los dos el mismo día', term: 'petsitting24' },
-  { id: 'campitinerary', days: 20, cat: 'Reservas', t: 'Escribir a Les Deux Glaciers (llegada 18/12) y a Alpenblick (reserva obligatoria, mínimo 2 noches en invierno, self check-in) con 2 perros', go: 'dormir' },
+  { id: 'campitinerary', days: 20, cat: 'Reservas', t: 'Escribir a Les Deux Glaciers (llegada 18/12) y a Alpenblick (reserva obligatoria, mínimo 2 noches en invierno, self check-in) con 2 perros', go: 'plan' },
   { id: 'grandassaly', days: 10, cat: 'Reservas', t: 'Si pensáis ir a La Thuile: llamar a Grand Assaly para confirmar que sigue abierta (+39 333 137 2961)' },
   { id: 'frontaxle', days: 10, cat: 'Vehículo', t: 'Medir la altura en el eje delantero: menos de 1,30 m = 33,50 € en el Gran San Bernardo; si no, 50 CHF', term: 'Gran San Bernardo' },
   { id: 'coins', days: 2, cat: 'Salida', t: 'Monedas de 1 € para las duchas y el agua caliente de las áreas italianas' },
@@ -358,3 +360,66 @@ export const CROSSINGS = {
 };
 export const GENERIC_SEASON = { from: '2026-12-05', to: '2027-04-11' };
 export const SKI_DAY_OTHER_CHF = 80;
+
+/* ═══════════════ Fichas por zona (todo comprobado el 26/11/2026; fuente en cada dato) ═══════════════
+   Se muestran en cada parada del itinerario. Zonas sin ficha: datos en vivo de OpenStreetMap. */
+export const CHECKED = '26/11/2026';
+export const ZONES = {
+  chamonix: {
+    img: IMG.chamonix,
+    showers: [
+      { name: 'En el camping (Les Deux Glaciers)', price: 'Incluida', note: 'Aseos calefactados con agua caliente.', url: 'https://www.les2glaciers.com/' },
+      { name: 'Piscina Richard Bozon', price: '6,80 €', note: 'Del 19/12: lun–vie 12–19:30, sáb–dom 14–19:30. Cerrada el 25/12; el 24 y el 31 cierra a las 18 h. Tel. +33 4 50 53 23 70.', url: 'https://www.chamonix.com/activites-automne/piscine-richard-bozon' },
+      { name: 'Sala de fitness R. Bozon', price: '9,90 € la sesión', note: 'Mismo centro deportivo (av. de la Plage).', url: 'https://www.chamonix.fr/fiche-touristique/salles-de-musculation-et-fitness-r-bozon/' },
+    ],
+    shops: [
+      { name: 'Compra grande en Sallanches o Passy', note: 'Súper más baratos del valle bajo, de camino desde la A40. Comprad aquí lo de Suiza (respetando la franquicia de aduana).', url: 'https://www.google.com/maps/search/supermarch%C3%A9+Sallanches' },
+      { name: 'Súper en Chamonix', note: 'Para lo del día.', url: 'https://www.google.com/maps/search/supermarch%C3%A9+Chamonix' },
+    ],
+    todo: ['Esquí en el valle (Brévent-Flégère, Grands Montets, Balme)', 'Paseos de fondo de valle con los perros', 'Aiguille du Midi si el día está despejado (sin perros)', 'Piscina o fitness Bozon para ducha y descanso'],
+    dogs: ['Bus del valle: comprobad la norma de perros antes de subir', 'Correa en el pueblo y en senderos'],
+    tips: ['Cadenas o 3PMSF obligatorio (Loi Montagne)', 'Acampar fuera de campings está muy controlado en el valle', 'Camping: tarjeta de huésped con descuentos'],
+    links: [['Chamonix turismo', 'https://www.chamonix.com/'], ['Pistas y remontes', 'https://www.chamonix.com/'], ['Aludes (Météo-France)', 'https://meteofrance.com/meteo-montagne']],
+  },
+  jungfrau: {
+    img: IMG.interlaken,
+    showers: [
+      { name: 'En el camping', price: 'Incluida', note: 'Alpenblick y Camping Jungfrau tienen aseos calefactados.', url: 'https://www.campinginterlaken.ch/' },
+      { name: 'Bödelibad (piscina cubierta), Unterseen', price: '≈9–10 CHF (confirmar)', note: 'Lun 14–21 · mar y jue 9–21 · mié y vie 7–21 · sáb, dom y festivos 9–18. Sin cierre en diciembre.', url: 'https://boedelibad-interlaken.ch/' },
+      { name: 'Sportzentrum Grindelwald', price: '50 % con la tarjeta de huésped', note: 'Piscina, rocódromo y pista de hielo. Tel. +41 33 854 12 30.', url: 'https://www.sportzentrum-grindelwald.ch/' },
+    ],
+    shops: [
+      { name: 'Lidl Matten', note: 'Wychelstrasse 1. El más barato.', url: 'https://www.google.com/maps/search/?api=1&query=Lidl+Matten+bei+Interlaken' },
+      { name: 'Aldi Interlaken', note: 'Junto a Landi (gas, comida de perros).', url: 'https://www.google.com/maps/search/?api=1&query=Aldi+Interlaken' },
+    ],
+    todo: ['Esquí Jungfrau (First, Kleine Scheidegg, Mürren)', 'First → Bachalpsee con los perros', 'Männlichen → Kleine Scheidegg', 'Valle de Lauterbrunnen a pie (gratis)'],
+    dogs: ['Perros gratis en casi todos los trenes de Jungfraubahnen', 'Prohibidos en pistas y trineos', 'Veterinario 24 h: Tierklinik Interlaken +41 33 822 21 41'],
+    tips: ['Festivos: 25 y 26/12 casi todo cerrado; compra el 23', 'Prohibido dormir fuera de campings en Berna (200–2.000 CHF)', 'Sin viñeta: Lötschberg + carreteras cantonales'],
+    links: [['Jungfrau en vivo', 'https://www.jungfrau.ch/de-ch/live/Pistendaten/'], ['Aludes SLF', 'https://whiterisk.ch/en/conditions'], ['MeteoSwiss', 'https://www.meteoswiss.admin.ch/']],
+  },
+  monterosa: {
+    img: IMG.champoluc,
+    showers: [
+      { name: 'Duchas del Area Camper Champoluc', price: '≈1 € (1,5 min)', note: 'Llevad monedas. También lavadora de pago.', url: 'https://www.areacamperchampoluc.com' },
+      { name: 'Piscina Aethos Monterosa', price: '25 € (caro)', note: 'Strada Regionale 45, Champoluc. Solo si no hay alternativa.', url: 'https://www.lovevda.it/it/banca-dati/9/piscina/champoluc-ayas-antagnod/piscina-aethos-monterosa/9017240' },
+      { name: 'Tschaval (Gressoney): SIN duchas', price: '—', note: 'Si dormís allí, duchaos en Champoluc o en un camping.', url: 'https://www.sostatschaval.altervista.org/joomla/' },
+    ],
+    shops: [{ name: 'Súper en Verrès o Aosta (valle)', note: 'Más baratos que en los pueblos de estación. Haced la compra de Navidad el 24 antes de subir.', url: 'https://www.google.com/maps/search/supermercato+Verr%C3%A8s' }],
+    todo: ['Esquí Monterosa Ski (Champoluc–Gressoney–Alagna)', 'Paseos por el fondo del Val d’Ayas con los perros', 'Raquetas por itinerarios balizados'],
+    dogs: ['El área admite perros', 'Correa en el pueblo y en los remontes'],
+    tips: ['No se reserva: llegad pronto el 24/12', 'Neumáticos de invierno o cadenas obligatorios (la temporada pasada, del 15/10 al 15/04)', '25 y 26/12 festivos en Italia'],
+    links: [['Monterosa Ski', 'https://www.monterosaski.com/'], ['Turismo Valle de Aosta', 'https://www.lovevda.it/'], ['Aludes AINEVA', 'https://bollettini.aineva.it/']],
+  },
+  lathuile: {
+    img: IMG.lathuile,
+    showers: [{ name: 'Duchas del área Grand Assaly', price: 'De pago', note: 'Confirmad que sigue abierta: +39 333 137 2961.', url: 'https://www.lovevda.it/it/banca-dati/22/aree-di-sosta/la-thuile/area-di-sosta-camper-azzurra-localita-villaret/9000935' }],
+    shops: [{ name: 'Súper en Pré-Saint-Didier o Aosta', note: 'Bajando por el valle.', url: 'https://www.google.com/maps/search/supermercato+Pr%C3%A9-Saint-Didier' }],
+    todo: ['Esquí La Thuile–La Rosière', 'Courmayeur y la cara italiana del Mont Blanc'],
+    dogs: ['Perros 1 €/día en el área'], tips: ['Llamad antes de ir: hay dudas sobre si sigue abierta'],
+    links: [['La Thuile', 'https://www.lathuile.it/'], ['Aludes AINEVA', 'https://bollettini.aineva.it/']],
+  },
+};
+/* Duchas en las paradas de ruta (ninguna área las abre en invierno) */
+export const ROUTE_SHOWERS = {
+  ussel: { name: 'Piscina municipal de Ussel', price: '5 € (6,50 € si no sois de Ussel)', note: '3 rue du Stade. En periodo escolar: lun, mar, jue y vie 12–13:30 y 16–19:40; mié 12–19:40. En vacaciones cambia el horario.', url: 'https://www.guide-piscine.fr/correze/piscine-de-ussel-1261_P' },
+};

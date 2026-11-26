@@ -12,7 +12,7 @@ export function startParticles() {
   for (let i = 0; i < N; i++) flakes.push(mk(true));
   function mk(init) {
     const z = Math.random();
-    return { x: Math.random() * W, y: init ? Math.random() * H : -10, r: (0.6 + z * 2.4) * devicePixelRatio, vy: (0.25 + z * 1.1) * devicePixelRatio, ph: Math.random() * 6.28, a: 0.25 + z * 0.6, hue: Math.random() < 0.15 ? 270 : 190 };
+    return { x: Math.random() * W, y: init ? Math.random() * H : -10, r: (0.8 + z * 2.6) * devicePixelRatio, vy: (0.25 + z * 1.0) * devicePixelRatio, ph: Math.random() * 6.28, a: 0.35 + z * 0.5, hue: 210 };
   }
   addEventListener('pointermove', e => { mouse.x = e.clientX * devicePixelRatio; mouse.y = e.clientY * devicePixelRatio; });
   let t = 0;
@@ -25,8 +25,8 @@ export function startParticles() {
       if (d < 120 * devicePixelRatio) { f.x += dx / d * 2.2; f.y += dy / d * 1.2; }
       if (f.y > H + 10) Object.assign(f, mk(false));
       ctx.beginPath();
-      ctx.fillStyle = `hsla(${f.hue},100%,92%,${f.a})`;
-      ctx.shadowBlur = f.r * 4; ctx.shadowColor = `hsla(${f.hue},100%,75%,.8)`;
+      ctx.fillStyle = `hsla(${f.hue},55%,${f.y < H * 0.45 ? 98 : 78}%,${f.a})`;
+      ctx.shadowBlur = f.r * 3; ctx.shadowColor = `hsla(${f.hue},70%,70%,.5)`;
       ctx.arc(f.x, f.y, f.r, 0, 6.283); ctx.fill();
     }
     requestAnimationFrame(loop);

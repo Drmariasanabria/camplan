@@ -2,15 +2,15 @@
 // - Código propio: primero red (siempre la última versión), si no hay red, la copia guardada.
 // - Librerías, fuentes, fotos y teselas de mapa ya vistas: primero caché.
 // - Las APIs en vivo las gestiona la propia app (guarda los últimos datos).
-const V = 'roadbook-20261126102120';
+const V = 'roadbook-20261126112646';
 const SHELL = [
   './', './index.html', './css/app.css', './manifest.webmanifest',
   './js/app.js', './js/firebase-config.js', './js/core/fx.js', './js/core/live.js', './js/core/store.js', './js/core/ui.js',
   './destinations/registry.js', './destinations/suiza/index.js', './destinations/suiza/data.js', './destinations/suiza/engine.js', './destinations/suiza/common.js', './destinations/suiza/roadbook.js',
-  ...['viaje', 'itinerario', 'preparar', 'ruta', 'dormir', 'tiempo', 'actividades', 'perros', 'destino', 'presupuesto', 'equipaje', 'emergencias'].map(s => `./destinations/suiza/sections/${s}.js`),
+  ...['plan', 'viaje', 'itinerario', 'preparar', 'ruta', 'dormir', 'tiempo', 'actividades', 'perros', 'destino', 'presupuesto', 'equipaje', 'emergencias'].map(s => `./destinations/suiza/sections/${s}.js`),
   './icons/icon-192.png', './icons/icon-512.png',
 ];
-const STATIC = /(unpkg\.com|cdn\.jsdelivr\.net|fonts\.(googleapis|gstatic)\.com|www\.gstatic\.com\/firebasejs|upload\.wikimedia\.org|basemaps\.cartocdn\.com|tile\.opentopomap\.org|arcgisonline\.com|opensnowmap\.org)/;
+const STATIC = /(unpkg\.com|cdn\.jsdelivr\.net|fonts\.(googleapis|gstatic)\.com|www\.gstatic\.com\/firebasejs|upload\.wikimedia\.org|basemaps\.cartocdn\.com|tile\.openstreetmap\.org|tile\.opentopomap\.org|arcgisonline\.com|opensnowmap\.org)/;
 const MAX_STATIC = 1500;
 
 self.addEventListener('install', e => {

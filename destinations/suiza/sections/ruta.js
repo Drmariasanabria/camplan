@@ -18,7 +18,7 @@ export default {
     const { ui, plan: p } = ctx, c = p.cfg, t = ui.term, so = STRATEGIES[c.outStrategy], sr = STRATEGIES[c.retStrategy];
     const candOut = STOPS.filter(s => s.strat.includes(c.outStrategy)), candRet = STOPS.filter(s => s.strat.includes(c.retStrategy));
     return `<p class="kicker">Por carretera</p><h1 class="title">Ruta <span class="grad-text">y etapas</span></h1>
-    <p class="lead">Ida por <b style="color:${so.color}">${so.name}</b> y vuelta por <b style="color:${sr.color}">${sr.name}</b>, con un máximo de <b>${c.maxHours} h</b> al día. Las etapas y las paradas se recalculan solas; puedes fijar cada noche a mano. <a href="#/suiza/viaje">Cambiar ruta u horas →</a></p>
+    <p class="lead">Ida por <b style="color:${so.color}">${so.name}</b> y vuelta por <b style="color:${sr.color}">${sr.name}</b>, con un máximo de <b>${c.maxHours} h</b> al día. Las etapas y las paradas se recalculan solas; puedes fijar cada noche a mano. <a href="#/suiza/plan">Cambiar ruta u horas →</a></p>
     ${warnList(p)}
     <div class="map" id="route-map"></div>
     <p class="small muted">Distancias sobre la ruta real (OpenStreetMap). Horas ajustadas a una camper cargada, con una pausa de 15 min cada 2 h para los perros.</p>

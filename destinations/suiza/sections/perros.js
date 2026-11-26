@@ -6,7 +6,7 @@ export default {
   bg: [IMG.collie, IMG.lauterbrunnen],
   render(ctx) {
     const { ui, plan: p } = ctx, c = p.cfg, t = ui.term, n = c.dogs;
-    if (!n) return `<p class="kicker">Perros</p><h1 class="title">Sin perros en este viaje</h1><p class="lead">Si viajáis con perros, indícalo en <a href="#/suiza/viaje">Mi viaje</a> y esta sección se rellena sola.</p>`;
+    if (!n) return `<p class="kicker">Perros</p><h1 class="title">Sin perros en este viaje</h1><p class="lead">Si viajáis con perros, indícalo en <a href="#/suiza/plan">Mi viaje</a> y esta sección se rellena sola.</p>`;
     const kgFood = n * c.dogKg * 0.015 * (p.totalDays + 2);
     const noDogDays = p.days.filter(d => d.kind === 'base' && actById(d.act)?.dogs === false);
     return `<p class="kicker">${n} perro${n > 1 ? 's' : ''} · ${ui.esc(c.dogNames)}</p><h1 class="title">Viajar <span class="grad-text">con los perros</span></h1>

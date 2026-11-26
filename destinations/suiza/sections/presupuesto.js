@@ -18,7 +18,7 @@ export default {
     });
     const bases = BASES.filter(x => c.dogs <= x.maxDogs).map(x => ({ x, q: alt(ctx, { stays: [{ base: x.id, nights: 0, price: p.stays.find(st => st.base.id === x.id)?.price || 0 }] }) }));
     return `<p class="kicker">Presupuesto vivo</p><h1 class="title">Cuánto cuesta <span class="grad-text">de verdad</span></h1>
-    <p class="lead">Calculado con vuestras fechas, kilómetros reales, el combustible de hoy, el cambio del día (1 € = ${p.fx.toFixed(3)} CHF) y lo que hayáis elegido. Cambia cualquier cifra aquí o en <a href="#/suiza/viaje">Mi viaje</a>.</p>
+    <p class="lead">Calculado con vuestras fechas, kilómetros reales, el combustible de hoy, el cambio del día (1 € = ${p.fx.toFixed(3)} CHF) y lo que hayáis elegido. Cambia cualquier cifra aquí o en <a href="#/suiza/plan">Mi viaje</a>.</p>
     <div class="grid g2">
       <div class="card no-tilt" style="text-align:center"><span class="tag"><span class="live-dot"></span>Total estimado</span>
         <div class="big-num grad-text" style="font-size:clamp(52px,6vw,84px)">${ui.eur(b.total)}</div>
