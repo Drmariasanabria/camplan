@@ -1,6 +1,6 @@
 // Pantalla principal: el viaje entero como itinerario editable.
 import { IMG, BASES, REGIONS, STRATEGIES, STOPS, ZONES, ROUTE_SHOWERS, CHECKED } from '../data.js';
-import { fmtDate, fmtLong, hhmm, diffDays, addDays, getCfg, staysOf, actById, activitiesFor, regionOf, nightPrice, money, curOf, countryOf, iso } from '../engine.js';
+import { fmtDate, fmtLong, hhmm, diffDays, addDays, getCfg, staysOf, actById, activitiesFor, regionOf, nightPrice, money, curOf, countryOf, iso, plan as computePlan } from '../engine.js';
 import { bindCfg } from '../common.js';
 import { openRoadbook } from '../roadbook.js';
 
@@ -9,6 +9,7 @@ const short = b => b.short || b.town.split(' (')[0];
 const enc = encodeURIComponent;
 
 /* ─────────── Bloques ─────────── */
+const daysSel = (k, v) => `<label class="field" style="flex-direction:row;align-items:center;gap:10px">Días de carretera <select data-roaddays="${k}" style="width:auto">${[[0, 'Automático (según tus horas)'], [1, '1 día (sin parar a dormir)'], [2, '2 días'], [3, '3 días'], [4, '4 días']].map(([n, l]) => `<option value="${n}" ${+v === n ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`;
 function driveCard(ctx, t, i, dir, cands) {
   const { ui, plan: p } = ctx, c = p.cfg, man = (dir === 'out' ? c.stopsOut : c.stopsRet) || {}, s = t.stop, sh = s && ROUTE_SHOWERS[s.id];
   return `<div class="drive"><span class="badge info">🚐 ${fmtDate(t.date)}</span><b>${ui.esc(t.from.replace('Camping-Car Park ', ''))} → ${ui.esc(t.to.replace('Camping-Car Park ', ''))}</b>
@@ -78,6 +79,7 @@ function stayCard(ctx, st, idx, total) {
           ${(Z?.todo || []).length ? `<p class="small muted" style="margin-top:10px">Ideas: ${Z.todo.join(' · ')}</p>` : ''}</div></div>
         ${c.dogs ? `<div class="row"><div class="k">🐕 Perros</div><div class="v small">${(Z?.dogs || ['Correa en pueblos y senderos; prohibidos en pistas', 'Comprobad la norma de cada remonte']).join(' · ')}</div></div>` : ''}
         <div class="row"><div class="k">⚠️ Ojo</div><div class="v small">${[...(Z?.tips || []), R.camper].filter(Boolean).join(' · ') || 'Nada especial.'}</div></div>
+        ${last ? `<div class="row"><div class="k">🔀 ¿Francia o Italia?</div><div class="v"><p class="small muted">Compara dónde pasar esta última parada. Las noches, la vuelta y el total se recalculan con cada opción.</p><div id="compare-last"><span class="loader"></span></div></div></div>` : ''}
         <div class="row"><div class="k">🔗 Enlaces</div><div class="v">${ui.links([...(Z?.links || [['Web de la zona', R.web]]), ['Rutas en Wikiloc', `https://www.wikiloc.com/wikiloc/map.do?sw=${(b.pos[0] - .05).toFixed(3)}%2C${(b.pos[1] - .07).toFixed(3)}&ne=${(b.pos[0] + .05).toFixed(3)}%2C${(b.pos[1] + .07).toFixed(3)}`]])}</div></div>
       </div>
     </div>
@@ -146,10 +148,12 @@ export default {
     </section>
     <div class="map" id="plan-map" style="height:380px;margin-bottom:30px"></div>
 
-    <div class="leg"><span class="leg-dot">→</span><h2 style="margin:6px 0 14px;font-size:26px">Ida · ${p.travelOut.length} día${p.travelOut.length > 1 ? 's' : ''}</h2>
+    <div class="leg"><span class="leg-dot">→</span><h2 style="margin:6px 0 10px;font-size:26px">Ida · ${p.travelOut.length} día${p.travelOut.length > 1 ? 's' : ''}</h2>
+      <div class="btn-row" style="margin:0 0 14px">${daysSel('outDays', c.outDays)} <span class="small muted">Salida de ${ui.esc(c.origin.name)} el ${fmtDate(c.depart)} a las ${c.dayTimes?.[c.depart] || c.departTime} · llegada el ${fmtDate(p.arrive)}</span></div>
       ${p.travelOut.map((t, i) => driveCard(ctx, t, i, 'out', candOut)).join('')}</div>
     ${p.stays.map((st, i) => (st.transfer ? `<div class="leg">${transferCard(ctx, st)}</div>` : '') + stayCard(ctx, st, i, p.stays.length)).join('')}
-    <div class="leg ret"><span class="leg-dot">←</span><h2 style="margin:6px 0 14px;font-size:26px">Vuelta · ${p.travelRet.length} día${p.travelRet.length > 1 ? 's' : ''}</h2>
+    <div class="leg ret"><span class="leg-dot">←</span><h2 style="margin:6px 0 10px;font-size:26px">Vuelta · ${p.travelRet.length} día${p.travelRet.length > 1 ? 's' : ''}</h2>
+      <div class="btn-row" style="margin:0 0 14px">${daysSel('retDays', c.retDays)} <span class="small muted">Ruta: <b>${STRATEGIES[p.cfg.retStrategy].name}</b> · en casa el ${fmtDate(p.homeArrive)}</span></div>
       ${p.travelRet.map((t, i) => driveCard(ctx, t, i, 'ret', candRet)).join('')}
       ${c.bufferDay ? `<div class="drive"><span class="badge">${fmtDate(c.homeBy)}</span><b>Día colchón</b><span class="muted">por si una nevada retrasa la vuelta</span></div>` : ''}</div>
     ${drawer(ctx)}`;
@@ -202,8 +206,9 @@ export default {
     el.querySelectorAll('[data-sdate]').forEach(inp => onCommit(inp, () => {
       const i = +inp.dataset.sdate, st = p.stays[i], lastI = p.stays.length - 1;
       const cfg = getCfg(ctx), sts = staysOf(cfg);
-      if (inp.dataset.k === 'in') { // mover la llegada de la primera parada = mover el día de salida de casa
-        cfg.depart = addDays(inp.value, -(p.travelOut.length - 1));
+      if (inp.dataset.k === 'in') { // llegada a la primera parada: se mantiene tu día de salida y cambian los días de carretera
+        const dd = diffDays(cfg.depart, inp.value) + 1;
+        if (dd >= 1) { cfg.outDays = Math.min(4, dd); cfg.stopsOut = {}; } else { cfg.depart = inp.value; cfg.outDays = 1; cfg.stopsOut = {}; }
       } else if (i < lastI) {
         sts[i].nights = Math.max(1, diffDays(st.checkin, inp.value));
       } else { // la última parada: su salida fija la vuelta a casa
@@ -230,6 +235,26 @@ export default {
       };
       b.onclick = go; inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
     });
+    // Días de carretera de ida y vuelta
+    el.querySelectorAll('[data-roaddays]').forEach(sel => sel.addEventListener('change', () => { const cfg = getCfg(ctx); cfg[sel.dataset.roaddays] = +sel.value;
+      cfg[sel.dataset.roaddays === 'outDays' ? 'stopsOut' : 'stopsRet'] = {}; ctx.set('cfg', cfg); ctx.toast('Días de carretera actualizados'); ctx.rerender(); }));
+    // Comparar la última parada
+    const cmp = el.querySelector('#compare-last');
+    if (cmp) {
+      const lastI = p.stays.length - 1, curId = p.stays[lastI].base.id;
+      const opts = ['deuxglaciers', 'champoluc', 'tschaval', 'grandassaly'].filter(id => BASES.some(b => b.id === id));
+      const rows = opts.map(id => { const cfg = getCfg(ctx), sts = staysOf(cfg); sts[lastI] = { base: id, nights: 0, price: 0 };
+        const q = computePlan({ ...ctx, get: (k, d) => k === 'cfg' ? { ...cfg, stays: sts } : ctx.get(k, d) }), b = BASES.find(x => x.id === id), st = q.stays[lastI];
+        return { id, b, st, q, cur: id === curId }; });
+      cmp.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Opción</th><th class="num">Noches</th><th class="num">€/noche</th><th>Vuelta</th><th class="num">Total viaje</th><th></th></tr></thead><tbody>${rows.map(r => `<tr>
+        <td><b>${FLAG[countryOf(r.b)]} ${r.b.short || r.b.town}</b><br><span class="small muted">${r.b.name}${r.b.status !== 'ok' ? ` · ${r.b.verdict}` : ''}</span></td>
+        <td class="num">${r.st.nights}</td><td class="num">${money(r.st.np, r.st.cur)}</td>
+        <td class="small">${STRATEGIES[r.q.cfg.retStrategy].short} · ${r.q.travelRet.length} día${r.q.travelRet.length > 1 ? 's' : ''}${r.st.transfer?.crossings.length ? `<br>${r.st.transfer.crossings.map(x => x.name.split(' (')[0] + ' ' + x.label).join(' + ')}` : ''}</td>
+        <td class="num"><b>${ui.eur(r.q.budget.total)}</b><br><span class="small ${r.q.budget.total <= p.budget.total ? '' : 'muted'}">${r.cur ? 'actual' : (r.q.budget.total < p.budget.total ? '−' : '+') + ui.eur(Math.abs(r.q.budget.total - p.budget.total))}</span></td>
+        <td>${r.cur ? '<span class="badge ok">Elegida</span>' : `<button class="btn sm" data-pickzone="${r.id}">Elegir</button>`}</td></tr>`).join('')}</tbody></table></div>
+        <p class="small muted" style="margin-top:8px">¿Otro sitio? Usa el buscador de arriba en esta misma ficha (Courmayeur, Cervinia, Annecy, Val Thorens…).</p>`;
+      cmp.querySelectorAll('[data-pickzone]').forEach(b => b.onclick = () => saveStays(sts => { sts[lastI] = { base: b.dataset.pickzone, nights: 0, price: 0 }; }));
+    }
     // Paradas de noche en ruta
     el.querySelectorAll('[data-stop]').forEach(s => s.addEventListener('change', () => { const cfg = getCfg(ctx), k = s.dataset.stop === 'out' ? 'stopsOut' : 'stopsRet', m = { ...(cfg[k] || {}) };
       if (s.value) m[s.dataset.i] = s.value; else delete m[s.dataset.i]; Object.keys(m).forEach(i => +i > +s.dataset.i && delete m[i]); cfg[k] = m; ctx.set('cfg', cfg); ctx.rerender(); }));

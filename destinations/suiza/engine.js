@@ -149,7 +149,7 @@ function profile(stratKey, cfg, dir = 'out') {
 }
 
 /* Reparte la ruta en jornadas según horas máximas y paradas elegidas */
-function splitDays(stratKey, cfg, dir, manual) {
+function splitDays(stratKey, cfg, dir, manual, forcedN = 0) {
   const pr = profile(stratKey, cfg, dir), total = pr.h, maxH = cfg.maxHours / 1.12; // 1.12 = pausas perros cada 2 h
   const cands = STOPS.filter(s => s.strat.includes(stratKey) && pr.pts.some(x => x.k === s.at)).map(s => {
     const p = pr.pts.find(x => x.k === s.at), extraH = s.detourKm / 70;
@@ -159,8 +159,13 @@ function splitDays(stratKey, cfg, dir, manual) {
   const days = []; let curH = 0, curKm = 0, guard = 0;
   while (guard++ < 6) {
     const n = days.length, forced = manual?.[n];
-    if (forced === 'none' || (!forced && total - curH <= maxH * 1.04)) { days.push({ km: pr.km - curKm, h: total - curH, stop: null }); break; }
+    const lastDay = forcedN ? n >= forcedN - 1 : total - curH <= maxH * 1.04;
+    if (forced === 'none' || (!forced && lastDay)) { days.push({ km: pr.km - curKm, h: total - curH, stop: null, over: total - curH > maxH }); break; }
     let pick = forced ? cands.find(c => c.id === forced && c.hFrom > curH) : null;
+    if (!pick && forcedN) { // número de días fijado por ti: cortes repartidos a partes iguales
+      const target = curH + (total - curH) / (forcedN - n), score = c => Math.abs(c.hFrom - target) + (c.zone ? 1.5 : 0);
+      pick = cands.filter(c => c.hFrom > curH + 0.5 && total - c.hFrom > 0.5).sort((a, b) => score(a) - score(b))[0];
+    }
     if (!pick) {
       // Reparto equilibrado: días que quedan y punto ideal de corte; se prefieren áreas verificadas
       const left = total - curH, nLeft = Math.max(2, Math.ceil(left / (maxH * 1.04))), target = curH + left / nLeft;
@@ -178,7 +183,7 @@ function splitDays(stratKey, cfg, dir, manual) {
 /* ─────────── Plan completo ─────────── */
 export function plan(ctx) {
   const cfg = effectiveCfg(getCfg(ctx)), base = baseOf(cfg), endBase = lastBase(cfg), warn = [];
-  const out = splitDays(cfg.outStrategy, cfg, 'out', cfg.stopsOut), ret = splitDays(cfg.retStrategy, cfg, 'ret', cfg.stopsRet);
+  const out = splitDays(cfg.outStrategy, cfg, 'out', cfg.stopsOut, +cfg.outDays || 0), ret = splitDays(cfg.retStrategy, cfg, 'ret', cfg.stopsRet, +cfg.retDays || 0);
   const arrive = addDays(cfg.depart, out.days.length - 1);
   const homeArrive = addDays(cfg.homeBy, cfg.bufferDay ? -1 : 0);
   const leave = addDays(homeArrive, -(ret.days.length - 1));
@@ -212,7 +217,7 @@ export function plan(ctx) {
     if (st.checkin < st.base.opens) warn.push({ lvl: 'bad', t: `${st.base.name} abre el ${fmtDate(st.base.opens)} y llegaríais el ${fmtDate(st.checkin)}.` });
     if (cfg.dogs > st.base.maxDogs) warn.push({ lvl: 'bad', t: `${st.base.name} admite como máximo ${st.base.maxDogs} perro según su tarifa; vais con ${cfg.dogs}.` });
   });
-  [...travelOut, ...travelRet].forEach(t => { if (t.over) warn.push({ lvl: 'warn', t: `${fmtDate(t.date)}: ninguna parada encaja en ${cfg.maxHours} h; la jornada sale de ${t.totalH.toFixed(1)} h.` });
+  [...travelOut, ...travelRet].forEach(t => { if (t.over) warn.push({ lvl: 'warn', t: `${fmtDate(t.date)}: jornada de ${t.totalH.toFixed(1)} h al volante (más de tus ${cfg.maxHours} h). Salid muy temprano y turnaos.` });
     if (t.late) warn.push({ lvl: 'warn', t: `${fmtDate(t.date)}: llegada estimada a las ${hhmm(t.arrival)}, ya de noche (anochece ≈17:15). Sal antes o acorta la etapa.` }); });
   if (cfg.skiers > cfg.adults) warn.push({ lvl: 'warn', t: 'Hay más esquiadores que adultos.' });
 

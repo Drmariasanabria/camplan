@@ -20,13 +20,13 @@ export const IMG = {
 
 /* ─────────────── Configuración por defecto (todo editable en «Mi viaje») ─────────────── */
 export const DEFAULT_CFG = {
-  depart: '2026-12-17', departTime: '06:30', homeBy: '2026-12-29', bufferDay: false,
+  depart: '2026-12-17', departTime: '05:00', homeBy: '2026-12-29', bufferDay: false, outDays: 1, retDays: 0,
   origin: { name: 'Torrelavega', pos: [43.3494, -4.0479] },
   adults: 2, skiers: 1, dogs: 2, dogNames: 'West y su compañero', dogKg: 20,
   van: { name: 'Ford Transit Custom Trail L1H1', height: 1.99, length: 4.97, cons: 9.5, tank: 70, fuel: 'diesel' },
   outStrategy: 'A', retStrategy: 'IT', maxHours: 10, stopsOut: {}, stopsRet: {}, vignette: false,
   // Itinerario «Alpes low-cost»: Chamonix → Interlaken → Valle de Aosta (Monte Rosa)
-  stays: [{ base: 'deuxglaciers', nights: 2, price: 0 }, { base: 'alpenblick', nights: 4, price: 0 }, { base: 'champoluc', nights: 0, price: 0 }],
+  stays: [{ base: 'deuxglaciers', nights: 3, price: 0 }, { base: 'alpenblick', nights: 3, price: 0 }, { base: 'champoluc', nights: 0, price: 0 }],
   skiDays: 4, halfDays: 0, winterPassDays: 3, sledRides: 0, sitterHours: 0,
   interests: { ski: true, tour: false, trail: true, snowshoe: true, sled: false, pool: true },
   foodPerDay: 28, localKm: 150, laundryLoads: 2, insurance: 0, contingencyPct: 7, eatOutMeals: 0,
